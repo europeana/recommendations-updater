@@ -5,6 +5,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 import org.springframework.stereotype.Repository;
 
+import java.util.Date;
 import java.util.stream.Stream;
 
 /**
@@ -20,4 +21,6 @@ public interface MongoRecordRepository extends MongoRepository<Record, String> {
      * @return cursor to all records in the database
      */
     Stream<Record> streamAllBy();
+
+    Stream<Record> streamByTimestampUpdatedAfter(Date date);
 }

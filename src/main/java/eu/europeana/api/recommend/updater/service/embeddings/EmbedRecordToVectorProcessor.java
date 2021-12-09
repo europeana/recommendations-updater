@@ -18,9 +18,11 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.PostConstruct;
+import java.util.Arrays;
+import java.util.List;
 
 @Component
-public class EmbedRecordToVectorProcessor implements ItemProcessor<EmbeddingRecord, RecordVectors> {
+public class EmbedRecordToVectorProcessor implements ItemProcessor<List<EmbeddingRecord>, List<RecordVectors>> {
 
     private static final Logger LOG = LogManager.getLogger(EmbedRecordToVectorProcessor.class);
 
@@ -79,16 +81,12 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<EmbeddingReco
                 .bodyToMono(EmbeddingResponse.class);
     }
 
-    // TODO send records in batch
-
     @Override
-    public RecordVectors process(EmbeddingRecord embeddingRecords) {
-        EmbeddingRecord[] requestData = new EmbeddingRecord[1];
-        requestData[0] = embeddingRecords;
-        LOG.debug("Sending {} vectors...", requestData.length);
-        EmbeddingResponse response = getVectors(requestData).block();
-        RecordVectors result = (response == null ? null : response.getData()[0]);
-        LOG.debug("  Response = {}...", result);
+    public List<RecordVectors> process(List<EmbeddingRecord> embeddingRecords) {
+        LOG.debug("Sending {} records to Embedding API...", embeddingRecords.size());
+        EmbeddingResponse response = getVectors(embeddingRecords.toArray(new EmbeddingRecord[0])).block();
+        List<RecordVectors> result = (response == null ? null : Arrays.asList(response.getData()));
+        LOG.trace("  Response = {}...", result);
         return result;
     }
 }

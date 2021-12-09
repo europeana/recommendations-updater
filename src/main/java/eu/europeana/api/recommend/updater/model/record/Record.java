@@ -4,6 +4,7 @@ import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 
@@ -14,7 +15,9 @@ import java.util.List;
  */
 @SuppressWarnings("java:S2384") // we'll ignore creating copies of field values to improve efficiency
 @Document(collection = "record")
-public class Record {
+public class Record implements Serializable {
+
+    private static final long serialVersionUID = 7041954999800826470L;
 
     @Id
     private ObjectId id;

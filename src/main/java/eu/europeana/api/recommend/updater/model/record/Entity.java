@@ -2,6 +2,7 @@ package eu.europeana.api.recommend.updater.model.record;
 
 import org.springframework.data.annotation.Id;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -10,7 +11,9 @@ import java.util.Map;
  *
  * @author Patrick Ehlert
  */
-public class Entity {
+public class Entity  implements Serializable {
+
+    private static final long serialVersionUID = 932678045340604732L;
 
     @Id
     private String about;

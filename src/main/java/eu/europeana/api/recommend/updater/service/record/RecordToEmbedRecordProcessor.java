@@ -22,7 +22,7 @@ import java.util.Map;
  * @author Patrick Ehlert
  */
 @Component
-public class RecordToEmbedRecordProcessor implements ItemProcessor<Record, EmbeddingRecord> {
+public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>, List<EmbeddingRecord>> {
 
     private static final Logger LOG = LogManager.getLogger(RecordToEmbedRecordProcessor.class);
 
@@ -30,58 +30,63 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<Record, Embed
     private static final String DEF = "def";
 
     @Override
-    public EmbeddingRecord process(final Record record) {
-        LOG.debug("Processing record {}, created = {}, lastModified = {}", record.getAbout(),
-                record.getTimestampCreated(), record.getTimestampUpdated());
+    public List<EmbeddingRecord> process(final List<Record> records) {
+        List<EmbeddingRecord> result = new ArrayList<>();
+        for (Record rec : records) {
+            LOG.debug("Processing record {}, created = {}, lastModified = {}", rec.getAbout(),
+                    rec.getTimestampCreated(), rec.getTimestampUpdated());
 
-        // gather all entities for easy reference
-        List<Entity> entities = new ArrayList<>();
-        entities.addAll(record.getAgents());
-        entities.addAll(record.getConcepts());
-        entities.addAll(record.getPlaces());
-        entities.addAll(record.getTimespans());
+            // gather all entities for easy reference
+            List<Entity> entities = new ArrayList<>();
+            entities.addAll(rec.getAgents());
+            entities.addAll(rec.getConcepts());
+            entities.addAll(rec.getPlaces());
+            entities.addAll(rec.getTimespans());
 
-        String id = record.getAbout();
-        List<String> title = new ArrayList<>();
-        List<String> description = new ArrayList<>();
-        List<String> creator = new ArrayList<>();
-        List<String> tags = new ArrayList<>();
-        List<String> places = new ArrayList<>();
-        List<String> times = new ArrayList<>();
-        for (Proxy p : record.getProxies()) {
-            addAllValues(title, p.getDcTitle(), null, true);
-            addAllValues(title, p.getDctermsAlternative(), null, true);
+            String id = rec.getAbout();
+            List<String> title = new ArrayList<>();
+            List<String> description = new ArrayList<>();
+            List<String> creator = new ArrayList<>();
+            List<String> tags = new ArrayList<>();
+            List<String> places = new ArrayList<>();
+            List<String> times = new ArrayList<>();
+            for (Proxy p : rec.getProxies()) {
+                addAllValues(title, p.getDcTitle(), null, true);
+                addAllValues(title, p.getDctermsAlternative(), null, true);
 
-            addAllValues(description, p.getDcDescription(), null, true);
+                addAllValues(description, p.getDcDescription(), null, true);
 
-            addAllValues(creator, p.getDcCreator(), entities, true);
-            addAllValues(creator, p.getDcContributor(), entities, true);
-            addAllValues(creator, p.getDcSubject(), new ArrayList<>(record.getAgents()), false);
-            addAllValues(creator, p.getEdmHasMet(), new ArrayList<>(record.getAgents()), false);
+                addAllValues(creator, p.getDcCreator(), entities, true);
+                addAllValues(creator, p.getDcContributor(), entities, true);
+                addAllValues(creator, p.getDcSubject(), new ArrayList<>(rec.getAgents()), false);
+                addAllValues(creator, p.getEdmHasMet(), new ArrayList<>(rec.getAgents()), false);
 
-            addAllValues(tags, p.getDcType(), entities, true);
-            addAllValues(tags, p.getDctermsMedium(), entities, true);
-            addAllValues(tags, p.getDcFormat(), entities, true);
-            addAllValues(tags, p.getDcSubject(), new ArrayList<>(record.getConcepts()), true);
+                addAllValues(tags, p.getDcType(), entities, true);
+                addAllValues(tags, p.getDctermsMedium(), entities, true);
+                addAllValues(tags, p.getDcFormat(), entities, true);
+                addAllValues(tags, p.getDcSubject(), new ArrayList<>(rec.getConcepts()), true);
 
-            addAllValues(places, p.getDctermsSpatial(), entities, true);
-            addAllValues(places, p.getEdmCurrentLocation(), entities, true);
-            addAllValues(places, p.getDcSubject(), new ArrayList<>(record.getPlaces()), false);
+                addAllValues(places, p.getDctermsSpatial(), entities, true);
+                addAllValues(places, p.getEdmCurrentLocation(), entities, true);
+                addAllValues(places, p.getDcSubject(), new ArrayList<>(rec.getPlaces()), false);
 
-            addAllValues(times, p.getDctermsCreated(), entities, true);
-            addAllValues(times, p.getDctermsIssued(), entities, true);
-            addAllValues(times, p.getDctermsTemporal(), entities, true);
-            addAllValues(times, p.getEdmHasMet(), new ArrayList<>(record.getTimespans()), false);
+                addAllValues(times, p.getDctermsCreated(), entities, true);
+                addAllValues(times, p.getDctermsIssued(), entities, true);
+                addAllValues(times, p.getDctermsTemporal(), entities, true);
+                addAllValues(times, p.getEdmHasMet(), new ArrayList<>(rec.getTimespans()), false);
+            }
+
+            EmbeddingRecord embedRecord = new EmbeddingRecord(
+                    id, // required field
+                    title.toArray(new String[0]), // required field
+                    description.toArray(new String[0]),
+                    creator.toArray(new String[0]),
+                    tags.toArray(new String[0]),
+                    places.toArray(new String[0]),
+                    times.toArray(new String[0]));
+            LOG.trace("{}", embedRecord);
+            result.add(embedRecord);
         }
-
-        EmbeddingRecord result = new EmbeddingRecord(id, // required field
-                title.toArray(new String[0]),
-                description.toArray(new String[0]),
-                creator.toArray(new String[0]),
-                tags.toArray(new String[0]),
-                places.toArray(new String[0]),
-                times.toArray(new String[0]));
-        LOG.trace("{}", result);
         return result;
     }
 

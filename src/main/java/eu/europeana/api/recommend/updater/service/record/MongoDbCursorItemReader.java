@@ -1,12 +1,17 @@
 package eu.europeana.api.recommend.updater.service.record;
 
+import eu.europeana.api.recommend.updater.config.JobCmdLineStarter;
+import eu.europeana.api.recommend.updater.config.UpdaterSettings;
 import eu.europeana.api.recommend.updater.model.record.Record;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.support.AbstractItemCountingItemStreamItemReader;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
-import java.util.Iterator;
+import javax.annotation.PreDestroy;
+import java.util.*;
 import java.util.stream.Stream;
 
 /**
@@ -14,39 +19,68 @@ import java.util.stream.Stream;
  *
  * @author Patrick Ehlert
  */
-public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemReader<Record> {
+@Component
+@StepScope
+public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemReader<List<Record>> {
 
     private static final Logger LOG = LogManager.getLogger(MongoDbCursorItemReader.class);
 
-    @Autowired
-    private MongoRecordRepository mongoRecordRepository;
+    private final UpdaterSettings settings;
+    private final MongoRecordRepository mongoRecordRepository;
 
     private Stream<Record> stream;
     private Iterator<Record> iterator;
+    private Boolean isFullUpdate;
+    private Date fromDate;
+
+    public MongoDbCursorItemReader(UpdaterSettings settings, MongoRecordRepository mongoRecordRepository) {
+        this.settings = settings;
+        this.mongoRecordRepository = mongoRecordRepository;
+    }
+
+    @Value("#{jobParameters['updateType']}")
+    public void setUpdateType (final String updateType) {
+        this.setName("Mongo record reader");
+        isFullUpdate = JobCmdLineStarter.PARAM_UPDATE_FULL.equalsIgnoreCase(updateType);
+    }
+
+    @Value("#{jobParameters['from']}")
+    public void setFromDate (final Date fromDate) {
+        this.fromDate = fromDate;
+    }
 
     @Override
     protected void doOpen() {
-        this.stream = mongoRecordRepository.streamAllBy();
+        if (this.isFullUpdate) {
+            this.stream = mongoRecordRepository.streamAllBy();
+        } else {
+            this.stream = mongoRecordRepository.streamByTimestampUpdatedAfter(this.fromDate);
+        }
         this.iterator = stream.iterator();
-        LOG.debug("Opened stream to Mongo");
+        LOG.debug("Opened stream to MongoDb");
     }
 
-
-
+    @PreDestroy
     @Override
     protected void doClose() {
         if (stream != null) {
+            LOG.info("Closing mongoDb stream");
             stream.close();
         }
     }
 
     @Override
-    protected Record doRead() {
-        if (iterator.hasNext()) {
-            return iterator.next();
+    @SuppressWarnings("java:S1168") // Spring-Batch requires us to return null when we're done
+    protected List<Record> doRead() {
+        List<Record> result = new ArrayList<>(settings.getBatchSize());
+        while (iterator.hasNext() && result.size() < settings.getBatchSize()) {
+            result.add(iterator.next());
         }
-
-        LOG.debug("Finished reading from Mongo");
+        if (!result.isEmpty()) {
+            LOG.trace("Retrieved {} items from Mongo", result.size());
+            return result;
+        }
+        LOG.info("Finished reading records from Mongo");
         return null;
     }
 

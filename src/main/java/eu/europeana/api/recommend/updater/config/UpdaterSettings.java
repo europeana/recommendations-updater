@@ -12,7 +12,7 @@ import javax.annotation.PostConstruct;
 
 /**
  * Container for all settings that we load from the application's properties file and optionally override from
- * the user.properties file
+ * the user.properties file.
  */
 @Configuration
 @PropertySource("classpath:recommend.updater.properties")

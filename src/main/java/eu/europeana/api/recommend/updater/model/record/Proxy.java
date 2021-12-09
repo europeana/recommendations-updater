@@ -3,6 +3,7 @@ package eu.europeana.api.recommend.updater.model.record;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -12,7 +13,9 @@ import java.util.Map;
  * @author Patrick Ehlert
  */
 @Document
-public class Proxy {
+public class Proxy  implements Serializable {
+
+    private static final long serialVersionUID = 7919213706694351173L;
 
     @Id
     private String about;

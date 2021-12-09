@@ -8,6 +8,7 @@ import org.springframework.batch.item.file.transform.LineAggregator;
 import org.springframework.core.io.FileSystemResource;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -16,7 +17,7 @@ import java.util.stream.Collectors;
  *
  * @author Patrick Ehlert
  */
-public class RecordVectorsFileWriter extends FlatFileItemWriterBuilder<RecordVectors> {
+public class RecordVectorsFileWriter extends FlatFileItemWriterBuilder<List<RecordVectors>> {
 
     private static final String[] FIELDS_TO_WRITE = new String[]{
             "id",
@@ -25,17 +26,20 @@ public class RecordVectorsFileWriter extends FlatFileItemWriterBuilder<RecordVec
     private static final String DELIMITER = ";";
 
     private final String fileName;
+    private final int batchSize;
 
     /**
      * Create a new Spring Batch writer that writes RecordVectors to csv file
      * @param fileName name of the file to write to
+     * @param batchSize number of items per list sent to the writer
      */
-    public RecordVectorsFileWriter(String fileName) {
+    public RecordVectorsFileWriter(String fileName, int batchSize) {
         this.fileName = fileName;
+        this.batchSize = batchSize;
     }
 
     @Override
-    public FlatFileItemWriter<RecordVectors> build() {
+    public FlatFileItemWriter<List<RecordVectors>> build() {
         this.name("Record Vectors Writer")
                 .headerCallback(createHeaderCallBack())
                 .lineAggregator(createLineAggregator())
@@ -48,8 +52,18 @@ public class RecordVectorsFileWriter extends FlatFileItemWriterBuilder<RecordVec
         return writer -> writer.write(String.join(DELIMITER, FIELDS_TO_WRITE));
     }
 
-    private LineAggregator<RecordVectors> createLineAggregator() {
-        return recordVectors -> recordVectors.getId() + DELIMITER + arrayToString(recordVectors.getEmbedding());
+    private LineAggregator<List<RecordVectors>> createLineAggregator() {
+        return list -> {
+            StringBuilder s = new StringBuilder(500 * batchSize); // rough estimate of average size
+            for (RecordVectors recordVectors : list) {
+                s.append(recordVectors.getId()).append(DELIMITER)
+                        .append(arrayToString(recordVectors.getEmbedding()))
+                        .append("\n");
+            }
+            // remove last newline
+            s.deleteCharAt(s.length() - 1);
+            return s.toString();
+        };
     }
 
     private String arrayToString(Double[] array) {

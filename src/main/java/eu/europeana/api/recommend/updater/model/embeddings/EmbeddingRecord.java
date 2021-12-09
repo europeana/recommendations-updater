@@ -1,6 +1,7 @@
 package eu.europeana.api.recommend.updater.model.embeddings;
 
 import javax.validation.constraints.NotNull;
+import java.io.Serializable;
 import java.util.Arrays;
 
 /**
@@ -9,7 +10,9 @@ import java.util.Arrays;
  * @author Patrick Ehlert
  */
 @SuppressWarnings("java:S2384") // we'll ignore creating copies of field values to improve efficiency
-public class EmbeddingRecord {
+public class EmbeddingRecord  implements Serializable {
+
+    private static final long serialVersionUID = 8981198216794631059L;
 
     @NotNull
     private final String id;

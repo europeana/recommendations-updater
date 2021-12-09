@@ -8,5 +8,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
  * @author Patrick Ehlert
  */
 @Document
-public class Agent extends Entity {
+public class Agent extends Entity  {
+
+    private static final long serialVersionUID = 7163172689297366108L;
+
 }

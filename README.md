@@ -27,6 +27,12 @@ or
 go to the application root where the pom.xml is located and excute  
 `./mvnw spring-boot:run` (Linux, Mac OS) or `mvnw.cmd spring-boot:run` (Windows)
 
+### Command-line parameters
+
+Either the command-line option `--ALL` needs to be provided to start a full update covering all records
+or the option `--from=<date>` to do a partial update with all records created or modified after the provided date.
+The date needs to be in ISO format, e.g. `--from=2021-10-08` or `--from=2021-10-08T12:15:00`
+
 ## License
 
 Licensed under the EUPL 1.2. For full details, see [LICENSE.md](LICENSE.md).

@@ -9,4 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
  */
 @Document
 public class Concept extends Entity {
+
+    private static final long serialVersionUID = -551746464227652015L;
+
 }

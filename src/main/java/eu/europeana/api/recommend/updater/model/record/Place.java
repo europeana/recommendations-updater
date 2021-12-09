@@ -9,4 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
  */
 @Document
 public class Place extends Entity {
+
+    private static final long serialVersionUID = 6610750132560914176L;
+
 }

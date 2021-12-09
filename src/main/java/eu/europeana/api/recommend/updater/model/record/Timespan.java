@@ -9,4 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
  */
 @Document
 public class Timespan extends Entity {
+
+    private static final long serialVersionUID = 3273995406944389789L;
+
 }

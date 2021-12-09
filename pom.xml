@@ -6,7 +6,7 @@
     <parent>
         <groupId>eu.europeana</groupId>
         <artifactId>europeana-parent-pom</artifactId>
-        <version>2.2</version>
+        <version>2.4-SNAPSHOT</version>
     </parent>
 
     <groupId>eu.europeana.api</groupId>
@@ -22,9 +22,9 @@
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
 
-        <spring-boot.version>2.4.12</spring-boot.version>
-        <mongo.driver.version>3.12.0</mongo.driver.version>
-        <mongo.snappy.version>1.1.7.3</mongo.snappy.version>
+        <spring-boot.version>2.5.7</spring-boot.version>
+        <mongo.driver.version>3.12.10</mongo.driver.version>
+        <mongo.snappy.version>1.1.8.4</mongo.snappy.version>
         <commons.lang.version>3.9</commons.lang.version>
         <swagger.version>3.0.0</swagger.version>
     </properties>

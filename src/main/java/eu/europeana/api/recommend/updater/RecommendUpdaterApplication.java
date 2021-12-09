@@ -5,14 +5,12 @@ import eu.europeana.api.recommend.updater.util.SocksProxyActivator;
 import org.apache.logging.log4j.LogManager;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.builder.SpringApplicationBuilder;
-import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 
 /**
  * Main application
  */
-@SpringBootApplication(scanBasePackages = "eu.europeana.api") //, exclude = {MongoAutoConfiguration.class})
-public class RecommendUpdaterApplication extends SpringBootServletInitializer {
+@SpringBootApplication(scanBasePackages = "eu.europeana.api")
+public class RecommendUpdaterApplication {
 
     /**
      * Main entry point of this application
@@ -29,13 +27,7 @@ public class RecommendUpdaterApplication extends SpringBootServletInitializer {
         // Activate socks proxy (if your application requires it)
         SocksProxyActivator.activate(new SocksProxyConfig("recommend.update.properties", "recommend.updater.user.properties"));
 
-        // TODO validate command-line args before passing on, or pass on null instead
         System.exit(SpringApplication.exit(SpringApplication.run(RecommendUpdaterApplication.class, args)));
-    }
-
-    @Override
-    protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
-        return application.sources(RecommendUpdaterApplication.class);
     }
 
 }

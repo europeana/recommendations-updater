@@ -53,7 +53,7 @@ public class SockProxyConfigTest {
      * Tests if a connection to google.com is blocked (because the proxy config is pointing to an non-existing server)
      */
     @Test
-    public void testConnectionBlockedByProxy() throws IOException, InterruptedException {
+    public void testConnectionBlockedByProxy() throws IOException {
         SocksProxyConfig config = new SocksProxyConfig("socks_config_enabled.properties");
         SocksProxyActivator.activate(config);
 

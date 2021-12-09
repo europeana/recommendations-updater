@@ -1,5 +1,6 @@
 package eu.europeana.api.recommend.updater.model.embeddings;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
 /**
@@ -7,7 +8,9 @@ import java.util.Arrays;
  *
  * @author Patrick Ehlert
  */
-public class RecordVectors {
+public class RecordVectors  implements Serializable {
+
+    private static final long serialVersionUID = 5388995526375071859L;
 
     private String id;
     private Double[] embedding;
