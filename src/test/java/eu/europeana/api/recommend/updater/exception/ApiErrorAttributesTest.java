@@ -5,8 +5,8 @@ import io.micrometer.core.instrument.util.StringUtils;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.path.json.JsonPath;
-import org.junit.Ignore;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -27,7 +27,7 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
  */
 @ActiveProfiles("test") // to avoid initialising Mongo
 @SpringBootTest(webEnvironment = RANDOM_PORT)
-@Ignore
+@Disabled
 public class ApiErrorAttributesTest {
 
     @MockBean
