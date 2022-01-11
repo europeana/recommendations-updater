@@ -10,11 +10,11 @@
     </parent>
 
     <groupId>eu.europeana.api</groupId>
-    <artifactId>recommendation-updater</artifactId>
+    <artifactId>recommendations-updater</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>war</packaging>
 
-    <name>Recommendation Engine Updatere</name>
+    <name>Recommendation Engine Updater</name>
     <description>Load CHO data from main Europeana database and generates vectors for the Recommendation Engine</description>
 
     <properties>
@@ -176,6 +176,12 @@
             <groupId>io.rest-assured</groupId>
             <artifactId>xml-path</artifactId>
             <version>4.2.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>3.3.0</version>
             <scope>test</scope>
         </dependency>
 

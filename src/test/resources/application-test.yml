@@ -8,3 +8,7 @@ server:
     enabled: true
     min-response-size: 1024
     mime-types: application/json, application/ld+json, application/xml, text/html, text/xml, text/plain
+
+spring:
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration, org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration

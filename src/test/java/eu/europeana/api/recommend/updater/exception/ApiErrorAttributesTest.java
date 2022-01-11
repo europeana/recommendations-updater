@@ -1,12 +1,15 @@
 package eu.europeana.api.recommend.updater.exception;
 
+import eu.europeana.api.recommend.updater.service.record.MongoRecordRepository;
 import io.micrometer.core.instrument.util.StringUtils;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.path.json.JsonPath;
+import org.junit.Ignore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -22,9 +25,13 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
  * MockMvc does not support testing error response contents, that's why we use RestAssured here instead
  * Note that these tests depend on the error settings defined in application.yml
  */
-@ActiveProfiles("test") // to load application-test.yml
+@ActiveProfiles("test") // to avoid initialising Mongo
 @SpringBootTest(webEnvironment = RANDOM_PORT)
+@Ignore
 public class ApiErrorAttributesTest {
+
+    @MockBean
+    private MongoRecordRepository mongoRecordRepository;
 
     @LocalServerPort
     private int port;
