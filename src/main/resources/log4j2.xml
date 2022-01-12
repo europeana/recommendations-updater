@@ -20,7 +20,7 @@
         <Logger name="org.mongodb.driver" level="INFO"/>
 
         <!-- Set to DEBUG to see what records are loaded, set to TRACE to see generated EmbeddingRecords -->
-        <Logger name="eu.europeana.api.recommend.updater.service.record.RecordToEmbedRecordProcessor" level="TRACE"/>
+        <Logger name="eu.europeana.api.recommend.updater.service.record.RecordToEmbedRecordProcessor" level="INFO"/>
 
         <!-- Set to DEBUG to see requests sends to Embedding API, set to TRACE to see response contents -->
         <Logger name="eu.europeana.api.recommend.updater.service.embeddings.EmbedRecordToVectorProcessor" level="DEBUG"/>

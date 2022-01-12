@@ -29,6 +29,7 @@ import java.util.Locale;
  * @author Patrick Ehlert
  */
 @Configuration
+@SuppressWarnings("java:S1147") // we call System.exit() on purpose as this is a command-line application
 public class JobCmdLineStarter implements ApplicationRunner {
 
     public static final String PARAM_UPDATE_FULL = "FULL";

@@ -31,7 +31,7 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
 
     @Override
     public List<EmbeddingRecord> process(final List<Record> records) {
-        List<EmbeddingRecord> result = new ArrayList<>();
+        List<EmbeddingRecord> result = new ArrayList<>(records.size());
         for (Record rec : records) {
             LOG.debug("Processing record {}, created = {}, lastModified = {}", rec.getAbout(),
                     rec.getTimestampCreated(), rec.getTimestampUpdated());

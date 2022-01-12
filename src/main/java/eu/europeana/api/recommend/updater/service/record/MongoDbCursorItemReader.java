@@ -52,8 +52,14 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
     @Override
     protected void doOpen() {
         if (this.isFullUpdate) {
+            if (LOG.isInfoEnabled()) {
+                LOG.info("{} records available", mongoRecordRepository.countAllBy());
+            }
             this.stream = mongoRecordRepository.streamAllBy();
         } else {
+            if (LOG.isInfoEnabled()) {
+                LOG.info("{} modified records available", mongoRecordRepository.countAllByTimestampUpdatedAfter(this.fromDate));
+            }
             this.stream = mongoRecordRepository.streamByTimestampUpdatedAfter(this.fromDate);
         }
         this.iterator = stream.iterator();
@@ -73,9 +79,13 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
     @SuppressWarnings("java:S1168") // Spring-Batch requires us to return null when we're done
     protected List<Record> doRead() {
         List<Record> result = new ArrayList<>(settings.getBatchSize());
-        while (iterator.hasNext() && result.size() < settings.getBatchSize()) {
-            result.add(iterator.next());
-        }
+
+   //     synchronized (iterator) {
+            while (iterator.hasNext() && result.size() < settings.getBatchSize()) {
+                result.add(iterator.next());
+            }
+     //   }
+
         if (!result.isEmpty()) {
             LOG.trace("Retrieved {} items from Mongo", result.size());
             return result;

@@ -3,6 +3,7 @@ package eu.europeana.api.recommend.updater.config;
 import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingRecord;
 import eu.europeana.api.recommend.updater.model.embeddings.RecordVectors;
 import eu.europeana.api.recommend.updater.model.record.Record;
+import eu.europeana.api.recommend.updater.service.TaskExecutor;
 import eu.europeana.api.recommend.updater.service.embeddings.EmbedRecordToVectorProcessor;
 import eu.europeana.api.recommend.updater.service.embeddings.EmbeddingRecordFileWriter;
 import eu.europeana.api.recommend.updater.service.embeddings.RecordVectorsFileWriter;
@@ -50,6 +51,7 @@ public class BatchConfiguration {
     private final MongoDbCursorItemReader recordReader;
     private final JobBuilderFactory jobBuilderFactory;
     private final StepBuilderFactory stepBuilderFactory;
+    private final TaskExecutor taskExecutor;
 
     // First processing part; we load records from Mongo and generate EmbeddingRecords
     private final RecordToEmbedRecordProcessor recordToEmbedRecordProcessor;
@@ -60,12 +62,14 @@ public class BatchConfiguration {
     public BatchConfiguration(UpdaterSettings settings,
                               JobBuilderFactory jobBuilderFactory,
                               StepBuilderFactory stepBuilderFactory,
+                              TaskExecutor taskExecutor,
                               MongoDbCursorItemReader recordReader,
                               RecordToEmbedRecordProcessor recordToEmbedRecordProcessor,
                               EmbedRecordToVectorProcessor embedRecordToVectorProcessor) {
         this.settings = settings;
         this.jobBuilderFactory = jobBuilderFactory;
         this.stepBuilderFactory = stepBuilderFactory;
+        this.taskExecutor = taskExecutor;
         this.recordReader = recordReader;
         this.recordToEmbedRecordProcessor = recordToEmbedRecordProcessor;
         this.embedRecordToVectorProcessor = embedRecordToVectorProcessor;
@@ -119,6 +123,7 @@ public class BatchConfiguration {
                     .reader(this.recordReader)
                     .processor(loadRecordGenerateVectorsProcessor())
                     .writer(recordVectorsWriter())
+                //    .taskExecutor(taskExecutor)
                     .build();
         }
 
@@ -128,6 +133,7 @@ public class BatchConfiguration {
                 .reader(this.recordReader)
                 .processor(recordToEmbedRecordProcessor)
                 .writer(embeddingRecordWriter())
+               // .taskExecutor(taskExecutor)
                 .build();
     }
 

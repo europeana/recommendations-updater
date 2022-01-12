@@ -18,9 +18,22 @@ import java.util.stream.Stream;
 public interface MongoRecordRepository extends MongoRepository<Record, String> {
 
     /**
+     * @return number of all records in the mongo database
+     */
+    Integer countAllBy();
+
+    /**
      * @return cursor to all records in the database
      */
     Stream<Record> streamAllBy();
 
+    /**
+     * @return number of all records modified after the given date
+     */
+    Integer countAllByTimestampUpdatedAfter(Date date);;
+
+    /**
+     * @return cursor to all records modified after the given date
+     */
     Stream<Record> streamByTimestampUpdatedAfter(Date date);
 }

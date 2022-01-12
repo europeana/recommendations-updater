@@ -15,6 +15,11 @@ public class RecordVectors  implements Serializable {
     private String id;
     private Double[] embedding;
 
+    public RecordVectors (String id, Double[] embedding) {
+        this.id = id;
+        this.embedding = embedding;
+    }
+
     public String getId() {
         return id;
     }

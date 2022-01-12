@@ -30,6 +30,10 @@ public class Record implements Serializable {
     private Date timestampCreated;
     private Date timestampUpdated;
 
+    public String getId() {
+        return id.toString();
+    }
+
     public String getAbout() {
         return about;
     }
