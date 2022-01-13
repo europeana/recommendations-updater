@@ -7,6 +7,7 @@ import eu.europeana.api.recommend.updater.service.TaskExecutor;
 import eu.europeana.api.recommend.updater.service.embeddings.EmbedRecordToVectorProcessor;
 import eu.europeana.api.recommend.updater.service.embeddings.EmbeddingRecordFileWriter;
 import eu.europeana.api.recommend.updater.service.embeddings.RecordVectorsFileWriter;
+import eu.europeana.api.recommend.updater.service.milvus.MilvusWriterService;
 import eu.europeana.api.recommend.updater.service.record.MongoDbCursorItemReader;
 import eu.europeana.api.recommend.updater.service.record.RecordToEmbedRecordProcessor;
 import org.apache.logging.log4j.LogManager;
@@ -18,6 +19,7 @@ import org.springframework.batch.core.configuration.annotation.JobBuilderFactory
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.item.ItemProcessor;
+import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.file.FlatFileItemWriter;
 import org.springframework.batch.item.support.CompositeItemProcessor;
 import org.springframework.context.annotation.Bean;
@@ -58,6 +60,8 @@ public class BatchConfiguration {
     // Second processing part; we send EmbeddingRecords to Embedding API and receive back vectors which as put in
     // RecordVector objects
     private final EmbedRecordToVectorProcessor embedRecordToVectorProcessor;
+    // Third; we write RecordVector to Milvus
+    private final MilvusWriterService milvusWriterService;
 
     public BatchConfiguration(UpdaterSettings settings,
                               JobBuilderFactory jobBuilderFactory,
@@ -65,7 +69,8 @@ public class BatchConfiguration {
                               TaskExecutor taskExecutor,
                               MongoDbCursorItemReader recordReader,
                               RecordToEmbedRecordProcessor recordToEmbedRecordProcessor,
-                              EmbedRecordToVectorProcessor embedRecordToVectorProcessor) {
+                              EmbedRecordToVectorProcessor embedRecordToVectorProcessor,
+                              MilvusWriterService milvusWriterService) {
         this.settings = settings;
         this.jobBuilderFactory = jobBuilderFactory;
         this.stepBuilderFactory = stepBuilderFactory;
@@ -73,6 +78,7 @@ public class BatchConfiguration {
         this.recordReader = recordReader;
         this.recordToEmbedRecordProcessor = recordToEmbedRecordProcessor;
         this.embedRecordToVectorProcessor = embedRecordToVectorProcessor;
+        this.milvusWriterService = milvusWriterService;
     }
 
     /**
@@ -88,7 +94,7 @@ public class BatchConfiguration {
         return compositeProcessor;
     }
 
-    // TODO create MilvusWriter
+
 
     /**
      * Writes EmbeddingRecords to file (for testing)
@@ -113,8 +119,13 @@ public class BatchConfiguration {
         if (UpdaterSettings.isValueDefined(settings.getEmbeddingsApiUrl()) &&
                 UpdaterSettings.isValueDefined(settings.getMilvusCollection())) {
             LOG.info("Embeddings API and Milvus are configured. Saving vectors to Milvus collection {} ", settings.getMilvusCollection());
-            // TODO implement
-            return null;
+            return stepBuilderFactory.get("step1")
+                    .<List<Record>, List<RecordVectors>>chunk(1)
+                    .reader(this.recordReader)
+                    .processor(loadRecordGenerateVectorsProcessor())
+                    .writer(milvusWriterService)
+                    //    .taskExecutor(taskExecutor)
+                    .build();
 
         } else if (UpdaterSettings.isValueDefined(settings.getEmbeddingsApiUrl())) {
             LOG.info("Embeddings API configured but no Milvus, so saving RecordVectors to file {}", settings.getTestFile());
@@ -143,6 +154,8 @@ public class BatchConfiguration {
                 .incrementer(new RunIdIncrementer())
                 .flow(step1)
                 .end()
+                .listener(recordReader)
+                .listener(milvusWriterService)
                 .build();
     }
 }

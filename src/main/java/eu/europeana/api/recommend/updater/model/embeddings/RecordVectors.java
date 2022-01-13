@@ -13,9 +13,9 @@ public class RecordVectors  implements Serializable {
     private static final long serialVersionUID = 5388995526375071859L;
 
     private String id;
-    private Double[] embedding;
+    private Float[] embedding;
 
-    public RecordVectors (String id, Double[] embedding) {
+    public RecordVectors (String id, Float[] embedding) {
         this.id = id;
         this.embedding = embedding;
     }
@@ -24,7 +24,7 @@ public class RecordVectors  implements Serializable {
         return id;
     }
 
-    public Double[] getEmbedding() {
+    public Float[] getEmbedding() {
         return embedding;
     }
 

@@ -5,13 +5,16 @@ import eu.europeana.api.recommend.updater.config.UpdaterSettings;
 import eu.europeana.api.recommend.updater.model.record.Record;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.batch.core.configuration.annotation.StepScope;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.item.support.AbstractItemCountingItemStreamItemReader;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PreDestroy;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
 import java.util.stream.Stream;
 
 /**
@@ -20,8 +23,7 @@ import java.util.stream.Stream;
  * @author Patrick Ehlert
  */
 @Component
-@StepScope
-public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemReader<List<Record>> {
+public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemReader<List<Record>> implements JobExecutionListener {
 
     private static final Logger LOG = LogManager.getLogger(MongoDbCursorItemReader.class);
 
@@ -38,15 +40,16 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
         this.mongoRecordRepository = mongoRecordRepository;
     }
 
-    @Value("#{jobParameters['updateType']}")
-    public void setUpdateType (final String updateType) {
+    @Override
+    public void beforeJob(JobExecution jobExecution) {
         this.setName("Mongo record reader");
-        isFullUpdate = JobCmdLineStarter.PARAM_UPDATE_FULL.equalsIgnoreCase(updateType);
+        isFullUpdate = JobCmdLineStarter.isFullUpdate(jobExecution.getJobParameters());
+        fromDate = JobCmdLineStarter.getFromDate(jobExecution.getJobParameters());
     }
 
-    @Value("#{jobParameters['from']}")
-    public void setFromDate (final Date fromDate) {
-        this.fromDate = fromDate;
+    @Override
+    public void afterJob(JobExecution jobExecution) {
+        // do nothing
     }
 
     @Override
@@ -72,6 +75,7 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
         if (stream != null) {
             LOG.info("Closing mongoDb stream");
             stream.close();
+            stream = null;
         }
     }
 
@@ -93,6 +97,8 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
         LOG.info("Finished reading records from Mongo");
         return null;
     }
+
+
 
     // TODO implement better resume from error functionality
 

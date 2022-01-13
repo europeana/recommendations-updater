@@ -34,8 +34,12 @@ public class UpdaterSettings {
 
     @Value("${milvus.url:}")
     private String milvusUrl;
+    @Value("${milvus.port}")
+    private Integer milvusPort;
     @Value("${milvus.collection:}")
     private String milvusCollection;
+    @Value("${milvus.usePartitions:false}")
+    private Boolean useMilvusPartitions;
 
     @Value("${test.file:}")
     private String testFile;
@@ -47,10 +51,16 @@ public class UpdaterSettings {
         LOG.info("  Threads = {}", getThreads());
         LOG.info("  Embeddings API = {}", embeddingsApiUrl);
         LOG.info("  Milvus {} at {}", milvusUrl, milvusCollection);
+        LOG.info("    Milvus use partitions = {}", useMilvusPartitions);
         LOG.info("  Test file {}", testFile);
 
-        if (isValueDefined(milvusUrl) && !isValueDefined(milvusCollection)) {
-            throw new ConfigurationException("Property milvus.collection is required when milvus.url is defined");
+        if (isValueDefined(milvusUrl)) {
+            if (!isValueDefined(milvusCollection)) {
+                throw new ConfigurationException("Property milvus.collection is required when milvus.url is defined");
+            }
+            if (milvusPort == null) {
+                throw new ConfigurationException("Property milvus.port is required when milvus.url is defined");
+            }
         }
     }
 
@@ -85,8 +95,16 @@ public class UpdaterSettings {
         return milvusUrl;
     }
 
+    public Integer getMilvusPort() {
+        return milvusPort;
+    }
+
     public String getMilvusCollection() {
         return milvusCollection;
+    }
+
+    public Boolean useMilvusPartitions() {
+        return useMilvusPartitions;
     }
 
     public String getTestFile() {
