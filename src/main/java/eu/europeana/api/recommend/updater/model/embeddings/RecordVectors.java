@@ -15,6 +15,10 @@ public class RecordVectors  implements Serializable {
     private String id;
     private Float[] embedding;
 
+    public RecordVectors() {
+        // Default constructor, required for Jackson deserialization
+    }
+
     public RecordVectors (String id, Float[] embedding) {
         this.id = id;
         this.embedding = embedding;

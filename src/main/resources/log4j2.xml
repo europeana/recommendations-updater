@@ -14,16 +14,25 @@
             <AppenderRef ref="Console"/>
         </Root>
 
+        <!-- MilvusClient will generate INFO logs each time vectors are inserted, so this is set to WARN to hide that -->
+        <Logger name="io.milvus.client.AbstractMilvusGrpcClient" level="WARN" />
+
         <Logger name="eu.europeana.api.recommend.updater.config.JobCmdLineStarter" level="DEBUG"/>
 
         <!-- Set to DEBUG to see all requests to Mongo -->
         <Logger name="org.mongodb.driver" level="INFO"/>
 
-        <!-- Set to DEBUG to see what records are loaded, set to TRACE to see generated EmbeddingRecords -->
-        <Logger name="eu.europeana.api.recommend.updater.service.record.RecordToEmbedRecordProcessor" level="INFO"/>
+        <!-- Set to DEBUG to see timing -->
+        <Logger name="eu.europeana.api.recommend.updater.service.record.MongoDbCursorItemReader" level="DEBUG"/>
 
-        <!-- Set to DEBUG to see requests sends to Embedding API, set to TRACE to see response contents -->
+        <!-- Set to DEBUG to see timing, set to TRACE to see generated EmbeddingRecords -->
+        <Logger name="eu.europeana.api.recommend.updater.service.record.RecordToEmbedRecordProcessor" level="DEBUG"/>
+
+        <!-- Set to DEBUG to see timing, set to TRACE to requests and responses -->
         <Logger name="eu.europeana.api.recommend.updater.service.embeddings.EmbedRecordToVectorProcessor" level="DEBUG"/>
+
+        <!-- Set to DEBUG to see timing, set to TRACE to see requests sent to Milvus -->
+        <Logger name="eu.europeana.api.recommend.updater.service.milvus.MilvusWriterService" level="DEBUG"/>
 
     </Loggers>
 </Configuration>

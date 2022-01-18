@@ -27,6 +27,8 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
 
     private static final Logger LOG = LogManager.getLogger(MongoDbCursorItemReader.class);
 
+    private static final String TOTAL_ITEMS = "TotalItems";
+
     private final UpdaterSettings settings;
     private final MongoRecordRepository mongoRecordRepository;
 
@@ -34,8 +36,10 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
     private Iterator<Record> iterator;
     private Boolean isFullUpdate;
     private Date fromDate;
+    private Integer nrRecordsToProcess;
 
     public MongoDbCursorItemReader(UpdaterSettings settings, MongoRecordRepository mongoRecordRepository) {
+        LOG.debug("Create MongoDbCursorItemReader");
         this.settings = settings;
         this.mongoRecordRepository = mongoRecordRepository;
     }
@@ -45,6 +49,13 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
         this.setName("Mongo record reader");
         isFullUpdate = JobCmdLineStarter.isFullUpdate(jobExecution.getJobParameters());
         fromDate = JobCmdLineStarter.getFromDate(jobExecution.getJobParameters());
+
+        if (this.isFullUpdate) {
+            this.nrRecordsToProcess = mongoRecordRepository.countAllBy();
+        } else {
+            this.nrRecordsToProcess = mongoRecordRepository.countAllByTimestampUpdatedAfter(this.fromDate);
+        }
+        jobExecution.getExecutionContext().put(TOTAL_ITEMS, nrRecordsToProcess);
     }
 
     @Override
@@ -54,15 +65,11 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
 
     @Override
     protected void doOpen() {
+        LOG.info("{} records to be processed", nrRecordsToProcess);
+
         if (this.isFullUpdate) {
-            if (LOG.isInfoEnabled()) {
-                LOG.info("{} records available", mongoRecordRepository.countAllBy());
-            }
             this.stream = mongoRecordRepository.streamAllBy();
         } else {
-            if (LOG.isInfoEnabled()) {
-                LOG.info("{} modified records available", mongoRecordRepository.countAllByTimestampUpdatedAfter(this.fromDate));
-            }
             this.stream = mongoRecordRepository.streamByTimestampUpdatedAfter(this.fromDate);
         }
         this.iterator = stream.iterator();
@@ -83,6 +90,7 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
     @SuppressWarnings("java:S1168") // Spring-Batch requires us to return null when we're done
     protected List<Record> doRead() {
         List<Record> result = new ArrayList<>(settings.getBatchSize());
+        Long start = System.currentTimeMillis();
 
    //     synchronized (iterator) {
             while (iterator.hasNext() && result.size() < settings.getBatchSize()) {
@@ -91,7 +99,7 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
      //   }
 
         if (!result.isEmpty()) {
-            LOG.trace("Retrieved {} items from Mongo", result.size());
+            LOG.debug("1. Retrieved {} items from Mongo in {} ms", result.size(), System.currentTimeMillis() - start);
             return result;
         }
         LOG.info("Finished reading records from Mongo");

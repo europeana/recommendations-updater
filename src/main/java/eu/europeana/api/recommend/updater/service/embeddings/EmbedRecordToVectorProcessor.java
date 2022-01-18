@@ -58,7 +58,7 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
 
     private ExchangeFilterFunction logRequest() {
         return (request, next) -> {
-            LOG.debug("Request: {} {}", request.method(), request.url());
+            LOG.trace("Request: {} {}", request.method(), request.url());
             return next.exchange(request);
         };
     }
@@ -66,7 +66,7 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
     private ExchangeFilterFunction logResponse() {
         return ExchangeFilterFunction.ofResponseProcessor(response -> {
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Response: {} {}", response.statusCode().value(), response.statusCode().getReasonPhrase());
+                LOG.trace("Response: {} {}", response.statusCode().value(), response.statusCode().getReasonPhrase());
             }
             return Mono.just(response);
 
@@ -83,10 +83,12 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
 
     @Override
     public List<RecordVectors> process(List<EmbeddingRecord> embeddingRecords) {
-        LOG.debug("Sending {} records to Embedding API...", embeddingRecords.size());
+        Long start = System.currentTimeMillis();
+        LOG.trace("Sending {} records to Embedding API...", embeddingRecords.size());
         EmbeddingResponse response = getVectors(embeddingRecords.toArray(new EmbeddingRecord[0])).block();
         List<RecordVectors> result = (response == null ? null : Arrays.asList(response.getData()));
         LOG.trace("  Response = {}...", result);
+        LOG.debug("3. Generated {} vectors in {} ms", result.size(), System.currentTimeMillis() - start);
         return result;
     }
 }

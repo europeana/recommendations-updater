@@ -59,7 +59,9 @@ public class MilvusWriterService implements JobExecutionListener, ItemWriter<Lis
 
             LOG.info("Milvus connection ok. Checking collections...");
             try {
-                checkMilvusCollectionsState(milvusClient.listCollections().getCollectionNames());
+                List<String> collections = milvusClient.listCollections().getCollectionNames();
+                LOG.info("Available collections are: {}", collections);
+                checkMilvusCollectionsState(collections);
             } catch (EuropeanaApiException e) {
                 LOG.error("Error checking Milvus state", e);
                 jobExecution.setExitStatus(ExitStatus.FAILED);
@@ -71,6 +73,7 @@ public class MilvusWriterService implements JobExecutionListener, ItemWriter<Lis
         // check if configured collection is available and empty or create new
         if (collectionNames.contains(collectionName)) {
             long size = milvusClient.countEntities(settings.getMilvusCollection()).getCollectionEntityCount();
+            LOG.info("Collection {} has {} entities", settings.getMilvusCollection(), size);
             if (isFullUpdate && size > 0) {
                 LOG.error("Found collection {} containing {} entities", collectionName, size);
                 throw new MilvusStateException("Aborting full-update because target collection exists and is not empty");
@@ -114,6 +117,7 @@ public class MilvusWriterService implements JobExecutionListener, ItemWriter<Lis
 
     @Override
     public void write(List<? extends List<RecordVectors>> lists) throws EuropeanaApiException {
+        Long start = System.currentTimeMillis();
         String setName = null;
         List<Long> ids = new ArrayList<>();
         List<List<Float>> vectors = new ArrayList<>();
@@ -147,25 +151,29 @@ public class MilvusWriterService implements JobExecutionListener, ItemWriter<Lis
         if (!ids.isEmpty()) {
             writeToMilvus(setName, ids, vectors);
         }
+        LOG.debug("4. Saved {} vectors in Milvus in {} ms", ids.size(), System.currentTimeMillis() - start);
+
     }
+
+    // TODO? Check before writing if ids are already present in Milvus or not? To prevent duplicates?
 
     private void writeToMilvus(String setName, List<Long> ids, List<List<Float>> vectors) throws EuropeanaApiException {
         if (setName == null) {
-            LOG.debug("Writing {} records to Milvus...", ids.size());
+            LOG.trace("Writing {} records to Milvus...", ids.size());
         } else {
-            LOG.debug("Writing {} records for set {} to Milvus...", ids.size(), setName);
+            LOG.trace("Writing {} records for set {} to Milvus...", ids.size(), setName);
         }
 
-        if (!partitionNames.contains(setName)) {
-            checkMilvusResponse(milvusClient.createPartition(collectionName, setName),
-                    "Error creating new partition for set " + setName);
-            partitionNames.add(setName);
-        }
+//        if (setName != null && !partitionNames.contains(setName)) {
+//            checkMilvusResponse(milvusClient.createPartition(collectionName, setName),
+//                    "Error creating new partition for set " + setName);
+//            partitionNames.add(setName);
+//        }
 
         InsertParam insrt = new InsertParam.Builder(collectionName)
                 .withVectorIds(ids)
                 .withFloatVectors(vectors)
-                .withPartitionTag(setName)
+            //    .withPartitionTag(setName)
                 .build();
         InsertResponse response = milvusClient.insert(insrt);
         if (!response.ok()) {

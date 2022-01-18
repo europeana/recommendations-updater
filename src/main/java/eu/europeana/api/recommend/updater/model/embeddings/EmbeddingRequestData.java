@@ -17,4 +17,12 @@ public class EmbeddingRequestData implements Serializable {
         return records;
     }
 
+    /**
+     * If set to 1 then 300-dimensional vectors are returned, but we need the original laser embedding vectors with
+     * dimension 1024 so should be set to 0
+     */
+    public int getReduce() {
+        return 0;
+    }
+
 }
