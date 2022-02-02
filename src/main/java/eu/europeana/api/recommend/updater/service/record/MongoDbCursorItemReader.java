@@ -8,7 +8,7 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.item.support.AbstractItemCountingItemStreamItemReader;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
 import java.util.ArrayList;
@@ -19,10 +19,11 @@ import java.util.stream.Stream;
 
 /**
  * Spring Batch reader for reading CHO records from a Mongo database
+ * We let each thread download one set, so we don't have to worry about concurrency
  *
  * @author Patrick Ehlert
  */
-@Component
+@Service
 public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemReader<List<Record>> implements JobExecutionListener {
 
     private static final Logger LOG = LogManager.getLogger(MongoDbCursorItemReader.class);
@@ -38,8 +39,7 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
     private Date fromDate;
     private Integer nrRecordsToProcess;
 
-    public MongoDbCursorItemReader(UpdaterSettings settings, MongoRecordRepository mongoRecordRepository) {
-        LOG.debug("Create MongoDbCursorItemReader");
+    public MongoDbCursorItemReader(UpdaterSettings settings, MongoRecordRepository mongoRecordRepository, SolrSetReader solrService) {
         this.settings = settings;
         this.mongoRecordRepository = mongoRecordRepository;
     }
@@ -47,13 +47,20 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
     @Override
     public void beforeJob(JobExecution jobExecution) {
         this.setName("Mongo record reader");
+
+        // check job parameters
         isFullUpdate = JobCmdLineStarter.isFullUpdate(jobExecution.getJobParameters());
         fromDate = JobCmdLineStarter.getFromDate(jobExecution.getJobParameters());
 
+        // get list of sets to download from Solr
+        // TODO!
+
+        // get total record count from Mongo
         if (this.isFullUpdate) {
             this.nrRecordsToProcess = mongoRecordRepository.countAllBy();
         } else {
             this.nrRecordsToProcess = mongoRecordRepository.countAllByTimestampUpdatedAfter(this.fromDate);
+            LOG.info("Total number of records to download {}", nrRecordsToProcess);
         }
         jobExecution.getExecutionContext().put(TOTAL_ITEMS, nrRecordsToProcess);
     }
@@ -92,11 +99,11 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
         List<Record> result = new ArrayList<>(settings.getBatchSize());
         Long start = System.currentTimeMillis();
 
-   //     synchronized (iterator) {
+        synchronized (iterator) {
             while (iterator.hasNext() && result.size() < settings.getBatchSize()) {
                 result.add(iterator.next());
             }
-     //   }
+        }
 
         if (!result.isEmpty()) {
             LOG.debug("1. Retrieved {} items from Mongo in {} ms", result.size(), System.currentTimeMillis() - start);

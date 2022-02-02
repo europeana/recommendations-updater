@@ -34,8 +34,7 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
         Long start = System.currentTimeMillis();
         List<EmbeddingRecord> result = new ArrayList<>(records.size());
         for (Record rec : records) {
-            LOG.trace("Processing record {}, created = {}, lastModified = {}", rec.getAbout(),
-                    rec.getTimestampCreated(), rec.getTimestampUpdated());
+            LOG.trace("Processing record {}, lastModified = {}", rec.getAbout(), rec.getTimestampUpdated());
 
             // gather all entities for easy reference
             List<Entity> entities = new ArrayList<>();

@@ -27,7 +27,6 @@ public class Record implements Serializable {
     private List<Concept> concepts;
     private List<Place> places;
     private List<Timespan> timespans;
-    private Date timestampCreated;
     private Date timestampUpdated;
 
     public String getId() {
@@ -56,10 +55,6 @@ public class Record implements Serializable {
 
     public List<Timespan> getTimespans() {
         return timespans;
-    }
-
-    public Date getTimestampCreated() {
-        return timestampCreated;
     }
 
     public Date getTimestampUpdated() {

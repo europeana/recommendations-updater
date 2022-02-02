@@ -33,14 +33,8 @@ import java.util.Locale;
 @SuppressWarnings("java:S1147") // we call System.exit() on purpose as this is a command-line application
 public class JobCmdLineStarter implements ApplicationRunner {
 
-    public static final String PARAM_UPDATE_FULL = "FULL";
-    public static final String PARAM_UPDATE_PARTIAL = "from";
-
-    public static final String JOB_UPDATETYPE_KEY = "updateType";
-    public static final String JOB_UPDATETYPE_VALUE_FULL = PARAM_UPDATE_FULL.toLowerCase(Locale.ROOT);
-    public static final String JOB_UPDATETYPE_VALUE_PARTIAL = "partial";
-    public static final String JOB_FROM_KEY = PARAM_UPDATE_PARTIAL;
-
+    public static final String PARAM_UPDATE_FULL = JobData.UPDATETYPE_VALUE_FULL.toUpperCase(Locale.ROOT);
+    public static final String PARAM_UPDATE_PARTIAL = JobData.FROM_KEY;
 
     private static final Logger LOG = LogManager.getLogger(JobCmdLineStarter.class);
 
@@ -94,11 +88,11 @@ public class JobCmdLineStarter implements ApplicationRunner {
             throw new ConfigurationException("Both full and partial update arguments found. Please specify either the " +
                     FULL_DESCRIPTION + " or a " + PARTIAL_DESCRIPTION);
         }
-        jobParamBuilder.addString(JOB_UPDATETYPE_KEY, JOB_UPDATETYPE_VALUE_FULL);
+        jobParamBuilder.addString(JobData.UPDATETYPE_KEY, JobData.UPDATETYPE_VALUE_FULL);
     }
 
     private void processPartialUpdate(ApplicationArguments args, JobParametersBuilder jobParamBuilder) throws ConfigurationException {
-        jobParamBuilder.addString(JOB_UPDATETYPE_KEY, JOB_UPDATETYPE_VALUE_PARTIAL);
+        jobParamBuilder.addString(JobData.UPDATETYPE_KEY, JobData.UPDATETYPE_VALUE_PARTIAL);
         List<String> fromDate = args.getOptionValues(PARAM_UPDATE_PARTIAL);
         if (fromDate == null || fromDate.isEmpty() || StringUtils.isBlank(fromDate.get(0))) {
             throw new ConfigurationException("Please specify a " + PARTIAL_DESCRIPTION);
@@ -112,15 +106,15 @@ public class JobCmdLineStarter implements ApplicationRunner {
             LocalDate from = LocalDate.parse(fromDate.get(0), DateTimeFormatter.ISO_LOCAL_DATE);
             date = Date.from(from.atStartOfDay(ZoneId.systemDefault()).toInstant());
         }
-        jobParamBuilder.addDate(JOB_FROM_KEY, date);
+        jobParamBuilder.addDate(JobData.FROM_KEY, date);
     }
 
 
     public static boolean isFullUpdate(JobParameters jobParameters) {
-        return PARAM_UPDATE_FULL.equalsIgnoreCase(jobParameters.getString(JOB_UPDATETYPE_KEY));
+        return PARAM_UPDATE_FULL.equalsIgnoreCase(jobParameters.getString(JobData.UPDATETYPE_KEY));
     }
 
     public static Date getFromDate(JobParameters jobParameters) {
-        return jobParameters.getDate(JOB_FROM_KEY);
+        return jobParameters.getDate(JobData.FROM_KEY);
     }
 }

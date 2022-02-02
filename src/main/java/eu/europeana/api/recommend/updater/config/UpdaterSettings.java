@@ -41,6 +41,9 @@ public class UpdaterSettings {
     @Value("${milvus.usePartitions:false}")
     private Boolean useMilvusPartitions;
 
+    @Value("${lmdb.folder}")
+    private String lmdbFolder;
+
     @Value("${test.file:}")
     private String testFile;
 
@@ -52,6 +55,7 @@ public class UpdaterSettings {
         LOG.info("  Embeddings API = {}", embeddingsApiUrl);
         LOG.info("  Milvus {} at {}", milvusUrl, milvusCollection);
         LOG.info("    Milvus use partitions = {}", useMilvusPartitions);
+        LOG.info("  LMDB folder = {}", lmdbFolder);
         LOG.info("  Test file {}", testFile);
 
         if (isValueDefined(milvusUrl)) {
@@ -105,6 +109,10 @@ public class UpdaterSettings {
 
     public Boolean useMilvusPartitions() {
         return useMilvusPartitions;
+    }
+
+    public String getLmdbFolder() {
+        return lmdbFolder;
     }
 
     public String getTestFile() {

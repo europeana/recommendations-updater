@@ -10,6 +10,7 @@ import eu.europeana.api.recommend.updater.service.embeddings.RecordVectorsFileWr
 import eu.europeana.api.recommend.updater.service.milvus.MilvusWriterService;
 import eu.europeana.api.recommend.updater.service.record.MongoDbCursorItemReader;
 import eu.europeana.api.recommend.updater.service.record.RecordToEmbedRecordProcessor;
+import eu.europeana.api.recommend.updater.service.record.SolrSetReader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.batch.core.Job;
@@ -19,7 +20,6 @@ import org.springframework.batch.core.configuration.annotation.JobBuilderFactory
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.item.ItemProcessor;
-import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.file.FlatFileItemWriter;
 import org.springframework.batch.item.support.CompositeItemProcessor;
 import org.springframework.context.annotation.Bean;
@@ -55,18 +55,20 @@ public class BatchConfiguration {
     private final StepBuilderFactory stepBuilderFactory;
     private final TaskExecutor taskExecutor;
 
-    // First processing part; we load records from Mongo and generate EmbeddingRecords
+    // Step 1. Query solr for all sets that we need to process
+    private final SolrSetReader solrSetReader;
+    // Step 2.1. Load records from Mongo per set and 2.2 generate EmbeddingRecords
     private final RecordToEmbedRecordProcessor recordToEmbedRecordProcessor;
-    // Second processing part; we send EmbeddingRecords to Embedding API and receive back vectors which as put in
-    // RecordVector objects
+    // Step 2.3. Send EmbeddingRecords to Embedding API and receive back vectors (RecordVector objects)
     private final EmbedRecordToVectorProcessor embedRecordToVectorProcessor;
-    // Third; we write RecordVector to Milvus
+    // Step 2.4. Write RecordVectors to Milvus
     private final MilvusWriterService milvusWriterService;
 
     public BatchConfiguration(UpdaterSettings settings,
                               JobBuilderFactory jobBuilderFactory,
                               StepBuilderFactory stepBuilderFactory,
                               TaskExecutor taskExecutor,
+                              SolrSetReader solrSetReader,
                               MongoDbCursorItemReader recordReader,
                               RecordToEmbedRecordProcessor recordToEmbedRecordProcessor,
                               EmbedRecordToVectorProcessor embedRecordToVectorProcessor,
@@ -75,6 +77,7 @@ public class BatchConfiguration {
         this.jobBuilderFactory = jobBuilderFactory;
         this.stepBuilderFactory = stepBuilderFactory;
         this.taskExecutor = taskExecutor;
+        this.solrSetReader = solrSetReader;
         this.recordReader = recordReader;
         this.recordToEmbedRecordProcessor = recordToEmbedRecordProcessor;
         this.embedRecordToVectorProcessor = embedRecordToVectorProcessor;
@@ -93,8 +96,6 @@ public class BatchConfiguration {
                 embedRecordToVectorProcessor));
         return compositeProcessor;
     }
-
-
 
     /**
      * Writes EmbeddingRecords to file (for testing)
@@ -116,43 +117,51 @@ public class BatchConfiguration {
 
     @Bean
     public Step step1() {
-        if (UpdaterSettings.isValueDefined(settings.getEmbeddingsApiUrl()) &&
-                UpdaterSettings.isValueDefined(settings.getMilvusCollection())) {
-            LOG.info("Embeddings API and Milvus are configured. Saving vectors to Milvus collection {} ", settings.getMilvusCollection());
-            return stepBuilderFactory.get("step1")
-                    .<List<Record>, List<RecordVectors>>chunk(1)
-                    .reader(this.recordReader)
-                    .processor(loadRecordGenerateVectorsProcessor())
-                    .writer(milvusWriterService)
-                    //    .taskExecutor(taskExecutor)
-                    .build();
-
-        } else if (UpdaterSettings.isValueDefined(settings.getEmbeddingsApiUrl())) {
-            LOG.info("Embeddings API configured but no Milvus, so saving RecordVectors to file {}", settings.getTestFile());
-            return stepBuilderFactory.get("step1")
-                    .<List<Record>, List<RecordVectors>>chunk(1)
-                    .reader(this.recordReader)
-                    .processor(loadRecordGenerateVectorsProcessor())
-                    .writer(recordVectorsWriter())
-                //    .taskExecutor(taskExecutor)
-                    .build();
-        }
-
-        LOG.info("No Embeddings API and Milvus configured, so saving EmbeddingRecords to file {}", settings.getTestFile());
         return stepBuilderFactory.get("step1")
-                .<List<Record>, List<EmbeddingRecord>>chunk(1)
-                .reader(this.recordReader)
-                .processor(recordToEmbedRecordProcessor)
-                .writer(embeddingRecordWriter())
-               // .taskExecutor(taskExecutor)
+                .tasklet(this.solrSetReader)
                 .build();
     }
 
     @Bean
-    public Job updateJob(Step step1) {
+    public Step step2() {
+        if (UpdaterSettings.isValueDefined(settings.getEmbeddingsApiUrl()) &&
+                UpdaterSettings.isValueDefined(settings.getMilvusCollection())) {
+            LOG.info("Embeddings API and Milvus are configured. Saving vectors to Milvus collection {} ", settings.getMilvusCollection());
+            return stepBuilderFactory.get("step2")
+                    .<List<Record>, List<RecordVectors>>chunk(1)
+                    .reader(this.recordReader)
+                    .processor(loadRecordGenerateVectorsProcessor())
+                    .writer(milvusWriterService)
+                    .taskExecutor(taskExecutor)
+                    .build();
+
+        } else if (UpdaterSettings.isValueDefined(settings.getEmbeddingsApiUrl())) {
+            LOG.info("Embeddings API configured but no Milvus, so saving RecordVectors to file {}", settings.getTestFile());
+            return stepBuilderFactory.get("step2")
+                    .<List<Record>, List<RecordVectors>>chunk(1)
+                    .reader(this.recordReader)
+                    .processor(loadRecordGenerateVectorsProcessor())
+                    .writer(recordVectorsWriter())
+                    .taskExecutor(taskExecutor)
+                    .build();
+        }
+
+        LOG.info("No Embeddings API and Milvus configured, so saving EmbeddingRecords to file {}", settings.getTestFile());
+        return stepBuilderFactory.get("step2")
+                .<List<Record>, List<EmbeddingRecord>>chunk(1)
+                .reader(this.recordReader)
+                .processor(recordToEmbedRecordProcessor)
+                .writer(embeddingRecordWriter())
+                .taskExecutor(taskExecutor)
+                .build();
+    }
+
+    @Bean
+    public Job updateJob(Step step1, Step step2) {
         return jobBuilderFactory.get("updateJob")
                 .incrementer(new RunIdIncrementer())
                 .flow(step1)
+                .next(step2)
                 .end()
                 .listener(recordReader)
                 .listener(milvusWriterService)
