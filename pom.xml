@@ -94,10 +94,11 @@
                     <artifactId>slf4j-api</artifactId>
                     <groupId>org.slf4j</groupId>
                 </exclusion>
-                <exclusion>
-                    <artifactId>stax2-api</artifactId>
-                    <groupId>org.codehaus.woodstox</groupId>
-                </exclusion>
+                <!-- TODO Fix weird issue, we can exclude woodstox and run the application, but then the ContextLoad unit test fails -->
+<!--                <exclusion>-->
+<!--                    <artifactId>stax2-api</artifactId>-->
+<!--                    <groupId>org.codehaus.woodstox</groupId>-->
+<!--                </exclusion>-->
             </exclusions>
         </dependency>
 
