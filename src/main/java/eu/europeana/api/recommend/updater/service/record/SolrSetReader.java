@@ -91,7 +91,10 @@ public class SolrSetReader implements Tasklet, StepExecutionListener {
             QueryResponse response = client.query(query);
             FacetField setsFacet = response.getFacetField(DATASET_NAME);
             for (FacetField.Count facetField : setsFacet.getValues()) {
-                result.add(facetField.getName());
+                // set names from solr are in the form of <setId>_<setName> so we split of the last part
+                String setId = facetField.getName().substring(0, facetField.getName().indexOf("_"));
+                LOG.trace("Found set {} (id = {}) ", facetField.getName(), setId);
+                result.add(setId);
             }
             return result;
         } catch (SolrServerException|IOException e) {

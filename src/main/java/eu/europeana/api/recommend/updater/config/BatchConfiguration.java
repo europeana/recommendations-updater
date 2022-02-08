@@ -64,6 +64,7 @@ public class BatchConfiguration {
     // Step 2.4. Write RecordVectors to Milvus
     private final MilvusWriterService milvusWriterService;
 
+    @SuppressWarnings("java:S107") // we want dependency injection, so need to have this many constructor parameters
     public BatchConfiguration(UpdaterSettings settings,
                               JobBuilderFactory jobBuilderFactory,
                               StepBuilderFactory stepBuilderFactory,
@@ -79,6 +80,7 @@ public class BatchConfiguration {
         this.taskExecutor = taskExecutor;
         this.solrSetReader = solrSetReader;
         this.recordReader = recordReader;
+        recordReader.setName("Mongo record reader");
         this.recordToEmbedRecordProcessor = recordToEmbedRecordProcessor;
         this.embedRecordToVectorProcessor = embedRecordToVectorProcessor;
         this.milvusWriterService = milvusWriterService;
