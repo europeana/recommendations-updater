@@ -30,7 +30,7 @@ import java.util.*;
  * @author Patrick Ehlert
  */
 @Service
-public class MilvusWriterService implements JobExecutionListener, ItemWriter<List<RecordVectors>> {
+public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, JobExecutionListener {
 
     private static final Logger LOG = LogManager.getLogger(MilvusWriterService.class);
 
@@ -42,7 +42,6 @@ public class MilvusWriterService implements JobExecutionListener, ItemWriter<Lis
     // It seems this is set because by default keys are limited to 511 bytes (see also https://lmdb.readthedocs.io/en/release/#storage-efficiency-limits)
     private static final int LMDB_MAX_KEY_SIZE = 510;
 
-
     private final UpdaterSettings settings;
     private final String collectionName; // used for both lmdb and Milvus!
 
@@ -53,7 +52,7 @@ public class MilvusWriterService implements JobExecutionListener, ItemWriter<Lis
     private Dbi<ByteBuffer> lmdbId2Key; // handle to database
     private Dbi<ByteBuffer> lmdbKey2Id; // handle to 2nd database
     private final Object idLock = new Object(); // lock to prevent concurrency issues
-    private Long id = -1L; // saved as recordId number to lmdb,=
+    private long id = -1L; // saved as recordId number to lmdb,=
 
     private Set<String> partitionNames = new HashSet(); // to keep track which sets (partitions) are present in Milvus
 

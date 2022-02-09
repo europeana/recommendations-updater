@@ -49,6 +49,8 @@ public class BatchConfiguration {
 
     private static final Logger LOG = LogManager.getLogger(BatchConfiguration.class);
 
+    private static final int MAX_THREADS = 50;
+
     private final UpdaterSettings settings;
     private final MongoDbCursorItemReader recordReader;
     private final JobBuilderFactory jobBuilderFactory;
@@ -81,6 +83,7 @@ public class BatchConfiguration {
         this.solrSetReader = solrSetReader;
         this.recordReader = recordReader;
         recordReader.setName("Mongo record reader");
+        recordReader.setSaveState(false); // mongo reader is not fault tolerant
         this.recordToEmbedRecordProcessor = recordToEmbedRecordProcessor;
         this.embedRecordToVectorProcessor = embedRecordToVectorProcessor;
         this.milvusWriterService = milvusWriterService;
@@ -130,11 +133,12 @@ public class BatchConfiguration {
                 UpdaterSettings.isValueDefined(settings.getMilvusCollection())) {
             LOG.info("Embeddings API and Milvus are configured. Saving vectors to Milvus collection {} ", settings.getMilvusCollection());
             return stepBuilderFactory.get("step2")
-                    .<List<Record>, List<RecordVectors>>chunk(1)
+                    .<List<Record>, List<RecordVectors>>chunk(1)// chunksize=1 because we want to write to Embeddings API 1 list of <batchsize> records
                     .reader(this.recordReader)
                     .processor(loadRecordGenerateVectorsProcessor())
                     .writer(milvusWriterService)
                     .taskExecutor(taskExecutor)
+                    .throttleLimit(MAX_THREADS)
                     .build();
 
         } else if (UpdaterSettings.isValueDefined(settings.getEmbeddingsApiUrl())) {
@@ -145,6 +149,7 @@ public class BatchConfiguration {
                     .processor(loadRecordGenerateVectorsProcessor())
                     .writer(recordVectorsWriter())
                     .taskExecutor(taskExecutor)
+                    .throttleLimit(MAX_THREADS)
                     .build();
         }
 
@@ -155,6 +160,7 @@ public class BatchConfiguration {
                 .processor(recordToEmbedRecordProcessor)
                 .writer(embeddingRecordWriter())
                 .taskExecutor(taskExecutor)
+                .throttleLimit(MAX_THREADS)
                 .build();
     }
 

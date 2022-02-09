@@ -33,6 +33,8 @@ public class SolrSetReader implements Tasklet, StepExecutionListener {
 
     private static final Logger LOG = LogManager.getLogger(SolrSetReader.class);
 
+    private static final int MAX_NUMBER_SETS = 5000; // should be enough to get all sets in 1 request for the time being
+
     private static final String DATASET_NAME = "edm_datasetName";
     private static final String TIMESTAMP_UPDATE = "timestamp_update";
 
@@ -56,21 +58,18 @@ public class SolrSetReader implements Tasklet, StepExecutionListener {
     public RepeatStatus execute(StepContribution stepContribution, ChunkContext chunkContext) throws Exception {
         connectToSolr();
         setsToDownload = getSets(fromDate);
+        LOG.info("Found {} sets to download", setsToDownload.size());
         closeSolr();
         return RepeatStatus.FINISHED;
     }
 
-    private void connectToSolr() throws SolrException {
+    private void connectToSolr() {
         LOG.info("Connecting to Solr Zookeeper cluster: {}...", zookeeperURL);
-
         client = new CloudSolrClient.Builder(Arrays.asList(zookeeperURL.split(",")), Optional.empty())
                 .build();
         client.setDefaultCollection(solrCore);
         client.connect();
-        LOG.info("Connected to Solr {}", zookeeperURL);
-
-        setsToDownload = getSets(fromDate);
-        LOG.info("Found {} sets to download", setsToDownload.size());
+        LOG.debug("Connected to Solr {}", zookeeperURL);
     }
 
     private List<String> getSets(Date date) throws SolrException {
@@ -78,7 +77,7 @@ public class SolrSetReader implements Tasklet, StepExecutionListener {
                 .setRows(0)
                 .setFields(DATASET_NAME)
                 .setFacet(true)
-                .setFacetLimit(5000) // set very high so we can get all sets (about 2200 atm) in 1 go
+                .setFacetLimit(MAX_NUMBER_SETS) // set very high so we can get all sets (about 2200 atm) in 1 go
                 .setFacetMinCount(1) // avoid listing empty or not-modified sets
                 .addFacetField(DATASET_NAME);
         if (date != null) {
@@ -92,8 +91,9 @@ public class SolrSetReader implements Tasklet, StepExecutionListener {
             FacetField setsFacet = response.getFacetField(DATASET_NAME);
             for (FacetField.Count facetField : setsFacet.getValues()) {
                 // set names from solr are in the form of <setId>_<setName> so we split of the last part
+                // note that retrieved sets are automatically ordered by solr in size, largest first
                 String setId = facetField.getName().substring(0, facetField.getName().indexOf("_"));
-                LOG.trace("Found set {} (id = {}) ", facetField.getName(), setId);
+                LOG.debug("Found set {} with size {}", facetField.getName(), facetField.getCount());
                 result.add(setId);
             }
             return result;

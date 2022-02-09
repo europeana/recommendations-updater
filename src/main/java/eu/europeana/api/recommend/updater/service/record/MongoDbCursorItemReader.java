@@ -4,9 +4,12 @@ import eu.europeana.api.recommend.updater.config.JobCmdLineStarter;
 import eu.europeana.api.recommend.updater.config.JobData;
 import eu.europeana.api.recommend.updater.config.UpdaterSettings;
 import eu.europeana.api.recommend.updater.model.record.Record;
+import eu.europeana.api.recommend.updater.service.ProgressLogger;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.batch.core.*;
+import org.springframework.batch.core.ExitStatus;
+import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.batch.item.support.AbstractItemCountingItemStreamItemReader;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +23,8 @@ import java.util.stream.Stream;
  * Note that we check the lastModified date of each record so we can check if things changed during the update. If so
  * we'll skip the changed record and log a warning.
  *
+ * This service also keeps track of progress because it's the only component that is always available (others may not
+ * depending on the configuration)
  * @author Patrick Ehlert
  */
 @Service
@@ -27,19 +32,27 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
 
     private static final Logger LOG = LogManager.getLogger(MongoDbCursorItemReader.class);
 
-    private static final String TOTAL_ITEMS = "TotalItems";
-
     private final UpdaterSettings settings;
     private final MongoRecordRepository mongoRecordRepository;
 
     private Date updateStart; // to check if records were modified during the update
     private Boolean isFullUpdate;
     private Date fromDate;
+    private boolean shuttingDown = false; // make sure we stop reading when shutdown is in progress
 
     // we create 1 cursor per set so we can download multiple sets at a time
     private final Queue<String> setsToDo = new ConcurrentLinkedQueue<>();
     private final Queue<SetCursor> setsInProgress = new ConcurrentLinkedQueue<>();
 
+    // we add a time-based progresslogger here since this is the only component that is guaranteed to exist (others may
+    // not depending on the configuration)
+    private ProgressLogger progressLogger;
+
+    /**
+     * Create new ItemReader that reads records from MongoDb
+     * @param settings inject application settings bean
+     * @param mongoRecordRepository inject mongo repository bean
+     */
     public MongoDbCursorItemReader(UpdaterSettings settings, MongoRecordRepository mongoRecordRepository) {
         this.settings = settings;
         this.mongoRecordRepository = mongoRecordRepository;
@@ -57,14 +70,14 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
         }
 
         // get total record count from Mongo
-        long nrRecordsToProcess;
+        int totalItemsToRead;
         if (this.isFullUpdate) {
-            nrRecordsToProcess = mongoRecordRepository.countAllBy();
+            totalItemsToRead = mongoRecordRepository.countAllBy();
         } else {
-            nrRecordsToProcess = mongoRecordRepository.countAllByTimestampUpdatedAfter(this.fromDate);
-            LOG.info("Total number of records to download {}", nrRecordsToProcess);
+            totalItemsToRead = mongoRecordRepository.countAllByTimestampUpdatedAfter(this.fromDate);
+            LOG.info("Total number of records to download {}", totalItemsToRead);
         }
-        stepExecution.getExecutionContext().put(TOTAL_ITEMS, nrRecordsToProcess);
+        this.progressLogger = new ProgressLogger(totalItemsToRead, settings.getLogInterval());
     }
 
     @Override
@@ -81,16 +94,18 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
     @PreDestroy
     @Override
     protected void doClose() {
-        // TODO also close cursors in progress!?
-
+        LOG.debug("Application is shutting down...");
+        shuttingDown = true;
         for (SetCursor setCursor : setsInProgress) {
-            LOG.info("Closing Mongo cursor for set {}", setCursor.setId);
+            LOG.debug("Closing Mongo cursor for set {}", setCursor.setId);
             setCursor.cursor.close();
         }
     }
 
     @Override
-    @SuppressWarnings("java:S1168") // Spring-Batch requires us to return null when we're done
+    // Spring-Batch requires us to return null when we're done (S1168)
+    // The start variable needs to be where it is, cannot be moved (S1941)
+    @SuppressWarnings({"java:S1168", "java:S1941" })
     protected List<Record> doRead() {
 
         // find work to do
@@ -117,9 +132,9 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
 
         // fetch records for selected setCursor
         List<Record> result = new ArrayList<>(settings.getBatchSize());
-        Long start = System.currentTimeMillis();
+        long start = System.currentTimeMillis();
 
-        while (setCursor.iterator.hasNext() && (result.size() < settings.getBatchSize())) {
+        while (!shuttingDown && setCursor.iterator.hasNext() && (result.size() < settings.getBatchSize())) {
             Record record = setCursor.iterator.next();
             LOG.trace("Read record {}", record.getAbout());
             if (updateStart.after(record.getTimestampUpdated())) {
@@ -127,6 +142,12 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
             } else {
                 LOG.warn("Record {} was updated after starting the update! Skipping it", record.getAbout());
             }
+        }
+        if (shuttingDown) {
+            // make sure we stop everything when shutdown is in progress
+            LOG.debug("Closing Mongo cursor for set {}", setCursor.setId);
+            setCursor.cursor.close();
+            return null;
         }
 
         // check if set is done or not
@@ -139,22 +160,20 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
 
         // return result
         if (!result.isEmpty()) {
-            LOG.debug("1. Retrieved {} items from Mongo in {} ms", result.size(), System.currentTimeMillis() - start);
+            LOG.debug("1. Retrieved {} items from set {} in {} ms", result.size(), setCursor.setId, System.currentTimeMillis() - start);
+            progressLogger.logProgress(result.size());
             return result;
         }
 
-        // TODO think if we need additional checks, what should we return what we should return here.
-        LOG.debug("setsInProgress = {}", setsInProgress);
         LOG.info("Done reading from Mongo!");
         return null;
     }
-
 
     // keep track of the open cursors, one for each set
     private static final class SetCursor {
         private final String setId;
         private final Stream<Record> cursor;
-        private Iterator<Record> iterator;
+        private final Iterator<Record> iterator;
 
         private SetCursor(String setId, Stream<Record> cursor) {
             this.setId = setId;

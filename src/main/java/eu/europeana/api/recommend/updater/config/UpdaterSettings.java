@@ -21,13 +21,16 @@ public class UpdaterSettings {
 
     private static final Logger LOG = LogManager.getLogger(UpdaterSettings.class);
 
-    private static final int DEFAULT_BATCH_SIZE = 25;
+    private static final int MAX_BATCH_SIZE = 500;
+    private static final int DEFAULT_BATCH_SIZE = 200;
     private static final int DEFAULT_THREADS = 10;
 
     @Value("${batchSize:}")
     private Integer batchSize;
     @Value("${threads:}")
     private Integer threads;
+    @Value("${log.interval:300}")
+    private Integer logInterval;
 
     @Value("${embeddings.api.url:}")
     private String embeddingsApiUrl;
@@ -49,9 +52,15 @@ public class UpdaterSettings {
 
     @PostConstruct
     private void logImportantSettings() throws ConfigurationException {
+        if (this.batchSize != null && this.batchSize > MAX_BATCH_SIZE) {
+            LOG.warn("Batch size higher than {} is not allowed", MAX_BATCH_SIZE);
+            this.batchSize = MAX_BATCH_SIZE;
+        }
+
         LOG.info("Configuration:");
         LOG.info("  Batch size = {}", getBatchSize());
         LOG.info("  Threads = {}", getThreads());
+        LOG.info("  Log interval = {} seconds", logInterval);
         LOG.info("  Embeddings API = {}", embeddingsApiUrl);
         LOG.info("  Milvus {} at {}", milvusUrl, milvusCollection);
         LOG.info("    Milvus use partitions = {}", useMilvusPartitions);
@@ -89,6 +98,10 @@ public class UpdaterSettings {
             return DEFAULT_THREADS;
         }
         return threads;
+    }
+
+    public Integer getLogInterval() {
+        return logInterval;
     }
 
     public String getEmbeddingsApiUrl() {
