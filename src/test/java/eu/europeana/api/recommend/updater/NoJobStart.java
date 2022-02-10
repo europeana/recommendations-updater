@@ -23,7 +23,7 @@ public class NoJobStart extends SpringBootTestContextBootstrapper {
                 @Override
                 public ConfigurableApplicationContext run(String... args) {
                     // we also provide "test" parameter so no jobs are started
-                    return super.run("FULL", "test");
+                    return super.run("--FULL", "test");
                 }
             };
         }
