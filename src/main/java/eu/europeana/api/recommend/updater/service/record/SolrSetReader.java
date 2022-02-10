@@ -92,8 +92,8 @@ public class SolrSetReader implements Tasklet, StepExecutionListener {
             for (FacetField.Count facetField : setsFacet.getValues()) {
                 // set names from solr are in the form of <setId>_<setName> so we split of the last part
                 // note that retrieved sets are automatically ordered by solr in size, largest first
-                String setId = facetField.getName().substring(0, facetField.getName().indexOf("_"));
-                LOG.debug("Found set {} with size {}", facetField.getName(), facetField.getCount());
+                String setId = datasetNameToId(facetField.getName());
+                LOG.debug("Found set {} with size {} -> id = {}", facetField.getName(), facetField.getCount(), setId);
                 result.add(setId);
             }
             return result;
@@ -107,6 +107,10 @@ public class SolrSetReader implements Tasklet, StepExecutionListener {
             LOG.info("Closing connection to Solr");
             client.close();
         }
+    }
+
+    private String datasetNameToId(String datasetName) {
+        return datasetName.replaceAll("(\\d+).+", "$1");
     }
 
     /**
