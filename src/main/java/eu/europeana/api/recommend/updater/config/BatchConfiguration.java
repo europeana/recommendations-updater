@@ -3,7 +3,6 @@ package eu.europeana.api.recommend.updater.config;
 import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingRecord;
 import eu.europeana.api.recommend.updater.model.embeddings.RecordVectors;
 import eu.europeana.api.recommend.updater.model.record.Record;
-import eu.europeana.api.recommend.updater.service.TaskExecutor;
 import eu.europeana.api.recommend.updater.service.embeddings.EmbedRecordToVectorProcessor;
 import eu.europeana.api.recommend.updater.service.embeddings.EmbeddingRecordFileWriter;
 import eu.europeana.api.recommend.updater.service.embeddings.RecordVectorsFileWriter;
@@ -15,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.DefaultBatchConfigurer;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
@@ -24,7 +24,10 @@ import org.springframework.batch.item.file.FlatFileItemWriter;
 import org.springframework.batch.item.support.CompositeItemProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
 
+import javax.sql.DataSource;
 import java.util.Arrays;
 import java.util.List;
 
@@ -45,7 +48,7 @@ import java.util.List;
  */
 @Configuration
 @EnableBatchProcessing
-public class BatchConfiguration {
+public class BatchConfiguration extends DefaultBatchConfigurer {
 
     private static final Logger LOG = LogManager.getLogger(BatchConfiguration.class);
 
@@ -70,7 +73,6 @@ public class BatchConfiguration {
     public BatchConfiguration(UpdaterSettings settings,
                               JobBuilderFactory jobBuilderFactory,
                               StepBuilderFactory stepBuilderFactory,
-                              TaskExecutor taskExecutor,
                               SolrSetReader solrSetReader,
                               MongoDbCursorItemReader recordReader,
                               RecordToEmbedRecordProcessor recordToEmbedRecordProcessor,
@@ -79,7 +81,6 @@ public class BatchConfiguration {
         this.settings = settings;
         this.jobBuilderFactory = jobBuilderFactory;
         this.stepBuilderFactory = stepBuilderFactory;
-        this.taskExecutor = taskExecutor;
         this.solrSetReader = solrSetReader;
         this.recordReader = recordReader;
         recordReader.setName("Mongo record reader");
@@ -87,6 +88,16 @@ public class BatchConfiguration {
         this.recordToEmbedRecordProcessor = recordToEmbedRecordProcessor;
         this.embedRecordToVectorProcessor = embedRecordToVectorProcessor;
         this.milvusWriterService = milvusWriterService;
+
+        SimpleAsyncTaskExecutor simpleTaskExecutor = new SimpleAsyncTaskExecutor();
+        simpleTaskExecutor.setConcurrencyLimit(settings.getThreads());
+        simpleTaskExecutor.setThreadNamePrefix("Chunk");
+        this.taskExecutor = simpleTaskExecutor;
+    }
+
+    @Override
+    public void setDataSource(DataSource dataSource) {
+        // at the moment we do not store spring-batch process data in a database, so no recovery is possible
     }
 
     /**

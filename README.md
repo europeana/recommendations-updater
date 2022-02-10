@@ -2,13 +2,16 @@
 
 Spring-Boot2 and Spring-Batch web application for generating updates to the Recommendation Engine
 
-The software loads data from a record Mongo databases, extracts record data and sends it to the
-Embeddings API. The Embeddings API returns vectors which are then saved into a Milvus cluster
+The software retrieves set names from Solr and uses this to loads records (of a particular set) from a Mongo databases.
+Part of the record data is then sends it to the Embeddings API which returns vectors. The vectors are saved into a Milvus
+database. Since the used Milvus version doesn't support string keys, we store a mapping between recordIds and keys
+in a local LMDB database.
 
 ## Prerequisites
  * Java 11
  * Maven<sup>*</sup> 
  * [Europeana parent pom](https://github.com/europeana/europeana-parent-pom)
+ * Record Solr search engine
  * Record Mongo database
  * Embeddings API
  * Milvus Recommendation Engine
@@ -18,9 +21,7 @@ Embeddings API. The Embeddings API returns vectors which are then saved into a M
  
 ## Run
 
-The application has a Tomcat web server that is embedded in Spring-Boot.
-
-Either select the `RecommendUpdaterApplication` class in your IDE and 'run' it
+The application is a command-line application. Either select the `RecommendUpdaterApplication` class in your IDE and 'run' it
 
 or 
 
@@ -29,9 +30,12 @@ go to the application root where the pom.xml is located and excute
 
 ### Command-line parameters
 
-Either the command-line option `--ALL` needs to be provided to start a full update covering all records
-or the option `--from=<date>` to do a partial update with all records created or modified after the provided date.
+The command-line option `--FULL` is required (to start a full update covering all records) or the option `--from=<date>`
+should be provided to do a partial update with all records created or modified after the provided date.
 The date needs to be in ISO format, e.g. `--from=2021-10-08` or `--from=2021-10-08T12:15:00`
+
+Optionally the `--DELETE` option can be supplied which will delete existing Milvus (and Lmdb) data before
+starting the update.
 
 ## License
 

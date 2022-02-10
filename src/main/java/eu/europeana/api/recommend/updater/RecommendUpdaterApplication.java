@@ -5,11 +5,12 @@ import eu.europeana.api.recommend.updater.util.SocksProxyActivator;
 import org.apache.logging.log4j.LogManager;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 
 /**
  * Main application
  */
-@SpringBootApplication(scanBasePackages = "eu.europeana.api")
+@SpringBootApplication(scanBasePackages = "eu.europeana.api", exclude = {DataSourceAutoConfiguration.class})
 public class RecommendUpdaterApplication {
 
     /**

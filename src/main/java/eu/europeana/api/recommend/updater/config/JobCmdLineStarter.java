@@ -24,8 +24,10 @@ import java.util.Locale;
 
 /**
  * Processes command-line parameters that determine what kind of update to start; either a full update
- * (indicated by the FULL parameter) or a partial update (which requires a 'from' parameter with a date
+ * (indicated by the --FULL parameter) or a partial update (which requires a 'from' parameter with a date
  * selecting all records that were created or updated after this date).
+ *
+ * Additionally the --DELETE option can be provided which deletes any existing Milvus (and LMDB) data.
  *
  * @author Patrick Ehlert
  */
@@ -35,11 +37,13 @@ public class JobCmdLineStarter implements ApplicationRunner {
 
     public static final String PARAM_UPDATE_FULL = JobData.UPDATETYPE_VALUE_FULL.toUpperCase(Locale.ROOT);
     public static final String PARAM_UPDATE_PARTIAL = JobData.FROM_KEY;
+    public static final String PARAM_DELETE_DB = JobData.DELETE_DB.toUpperCase(Locale.ROOT);
 
     private static final Logger LOG = LogManager.getLogger(JobCmdLineStarter.class);
 
-    private static final String FULL_DESCRIPTION = "'" + PARAM_UPDATE_FULL + "' parameter";
+    private static final String FULL_DESCRIPTION = "'--" + PARAM_UPDATE_FULL + "' parameter";
     private static final String PARTIAL_DESCRIPTION = "'--" + PARAM_UPDATE_PARTIAL + "=[yyyy-MM-ddThh:mm:ss]' parameter and date value";
+
 
     private final JobLauncher jobLauncher;
     private final Job job;
@@ -63,13 +67,17 @@ public class JobCmdLineStarter implements ApplicationRunner {
         }
 
         JobParametersBuilder jobParamBuilder = new JobParametersBuilder();
-        if (args.getNonOptionArgs().contains(PARAM_UPDATE_FULL)) {
+        if (args.getOptionNames().contains(PARAM_UPDATE_FULL)) {
            processFullUpdate(args, jobParamBuilder);
         } else if (args.getOptionNames().contains(PARAM_UPDATE_PARTIAL)) {
             processPartialUpdate(args, jobParamBuilder);
         } else {
             throw new ConfigurationException("Either command-line " + FULL_DESCRIPTION + " or a " +
                     PARTIAL_DESCRIPTION + " needs to be provided");
+        }
+
+        if (args.getOptionNames().contains(PARAM_DELETE_DB)) {
+            processDelete(jobParamBuilder);
         }
 
         // For testing purposes we use the --test option. In this case we don't start the job
@@ -109,6 +117,10 @@ public class JobCmdLineStarter implements ApplicationRunner {
         jobParamBuilder.addDate(JobData.FROM_KEY, date);
     }
 
+    private void processDelete(JobParametersBuilder jobParametersBuilder) {
+        jobParametersBuilder.addString(JobData.DELETE_DB, "true");
+    }
+
 
     public static boolean isFullUpdate(JobParameters jobParameters) {
         return PARAM_UPDATE_FULL.equalsIgnoreCase(jobParameters.getString(JobData.UPDATETYPE_KEY));
@@ -116,5 +128,9 @@ public class JobCmdLineStarter implements ApplicationRunner {
 
     public static Date getFromDate(JobParameters jobParameters) {
         return jobParameters.getDate(JobData.FROM_KEY);
+    }
+
+    public static boolean isDeleteDb(JobParameters jobParameters) {
+        return Boolean.valueOf(jobParameters.getString(JobData.DELETE_DB));
     }
 }

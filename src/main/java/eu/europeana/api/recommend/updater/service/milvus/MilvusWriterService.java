@@ -1,6 +1,5 @@
 package eu.europeana.api.recommend.updater.service.milvus;
 
-import eu.europeana.api.commons.error.EuropeanaApiException;
 import eu.europeana.api.recommend.updater.config.JobCmdLineStarter;
 import eu.europeana.api.recommend.updater.config.UpdaterSettings;
 import eu.europeana.api.recommend.updater.exception.MilvusStateException;
@@ -8,18 +7,15 @@ import eu.europeana.api.recommend.updater.model.embeddings.RecordVectors;
 import io.milvus.client.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.lmdbjava.*;
-import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
-import java.io.File;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Service that sets up connection to Milvus and writes vectors to it.
@@ -34,31 +30,19 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
 
     private static final Logger LOG = LogManager.getLogger(MilvusWriterService.class);
 
-    // It seems there is no option to specify a database name and this name is always used;
-    private static final String LMDB_FILE_NAME = "data.mdb";
-    // Value copied from https://bitbucket.org/jhn-ngo/recsy-xx/src/master/src/recommenders/europeana/indexers/milvus_indexer.py#lines-97
-    private static final long LMDB_MAX_SIZE = 50_000_000_000L;
-    // Value copied from https://bitbucket.org/jhn-ngo/recsy-xx/src/master/src/recommenders/europeana/indexers/milvus_indexer.py#lines-126
-    // It seems this is set because by default keys are limited to 511 bytes (see also https://lmdb.readthedocs.io/en/release/#storage-efficiency-limits)
-    private static final int LMDB_MAX_KEY_SIZE = 510;
-
     private final UpdaterSettings settings;
     private final String collectionName; // used for both lmdb and Milvus!
 
+    private final LmdbWriterService lmdbWriterService;
     private boolean isFullUpdate;
     private MilvusClient milvusClient;
 
-    private Env<ByteBuffer> lmdbEnvironment;
-    private Dbi<ByteBuffer> lmdbId2Key; // handle to database
-    private Dbi<ByteBuffer> lmdbKey2Id; // handle to 2nd database
-    private final Object idLock = new Object(); // lock to prevent concurrency issues
-    private long id = -1L; // saved as recordId number to lmdb,=
+    //private Set<String> partitionNames = new HashSet(); // to keep track which sets (partitions) are present in Milvus
 
-    private Set<String> partitionNames = new HashSet(); // to keep track which sets (partitions) are present in Milvus
-
-    public MilvusWriterService(UpdaterSettings settings) {
+    public MilvusWriterService(UpdaterSettings settings, LmdbWriterService lmdbWriterService) {
         this.settings = settings;
         this.collectionName = settings.getMilvusCollection();
+        this.lmdbWriterService = lmdbWriterService;
     }
 
     /**
@@ -66,10 +50,14 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
      * @param jobExecution
      */
     @Override
+    @SuppressWarnings("fb-contrib:USFW_UNSYNCHRONIZED_SINGLETON_FIELD_WRITES")
     public void beforeJob(JobExecution jobExecution) {
         this.isFullUpdate = JobCmdLineStarter.isFullUpdate(jobExecution.getJobParameters());
+        boolean isDeleteDb = JobCmdLineStarter.isDeleteDb(jobExecution.getJobParameters());
 
         if (UpdaterSettings.isValueDefined(settings.getMilvusUrl())) {
+            long count = lmdbWriterService.init(isFullUpdate, isDeleteDb);
+
             LOG.info("Setting up connection to Milvus at {}...", settings.getMilvusUrl());
             ConnectParam connectParam = new ConnectParam.Builder()
                     .withHost(settings.getMilvusUrl())
@@ -78,72 +66,72 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
             milvusClient = new MilvusGrpcClient(connectParam);
 
             LOG.info("Milvus connection ok. Checking collections...");
-            try {
-                List<String> collections = milvusClient.listCollections().getCollectionNames();
-                LOG.info("Available collections are: {}", collections);
-                checkMilvusCollectionsState(collections);
-            } catch (EuropeanaApiException e) {
-                LOG.error("Error checking Milvus state", e);
-                jobExecution.setExitStatus(ExitStatus.FAILED);
-            }
 
-            LOG.info("Checking local lmdb database at folder {}", settings.getLmdbFolder());
-            setupLmdb(settings.getLmdbFolder(), settings.getMilvusCollection());
+            List<String> collections = milvusClient.listCollections().getCollectionNames();
+            LOG.info("Available collections are: {}", collections);
+            checkMilvusCollectionsState(collections, count, isDeleteDb);
         }
     }
 
-    private void checkMilvusCollectionsState(List<String> collectionNames) throws EuropeanaApiException {
-        // check if configured collection is available and empty or create new
+    private void checkMilvusCollectionsState(List<String> collectionNames, long expectedCount, boolean deleteOldData) {
+        long nrEntities;
         if (collectionNames.contains(collectionName)) {
-            long size = milvusClient.countEntities(settings.getMilvusCollection()).getCollectionEntityCount();
-            LOG.info("Collection {} has {} entities", settings.getMilvusCollection(), size);
-            if (isFullUpdate && size > 0) {
-                LOG.error("Found collection {} containing {} entities", collectionName, size);
-                throw new MilvusStateException("Aborting full-update because target collection exists and is not empty");
-            }
-            if (!isFullUpdate && size == 0) {
-                LOG.warn("Found empty collection while doing partial update. Are you sure you don't want to do a full update?");
-            }
+            if (deleteOldData) {
+                LOG.info("Deleting old collection {}...", collectionName);
+                checkMilvusResponse(milvusClient.dropCollection(collectionName),
+                        "Error dropping Milvus collection " + collectionName);
 
-            if (settings.useMilvusPartitions()) {
-                this.partitionNames = new HashSet(milvusClient.listPartitions(collectionName).getPartitionList());
+                LOG.info("Creating empty new collection named {}...", collectionName);
+                createNewCollection(collectionName);
+                nrEntities = 0;
+            } else {
+                nrEntities = milvusClient.countEntities(settings.getMilvusCollection()).getCollectionEntityCount();
             }
         } else {
             LOG.info("Creating empty new collection named {}...", collectionName);
-
-            // Create a Milvus collection and index
-            // Settings are copied from https://bitbucket.org/jhn-ngo/recsy-xx/src/master/src/engines/searchers/engine.py
-            CollectionMapping newCollection =  new CollectionMapping.Builder(collectionName, 1024).build();
-            checkMilvusResponse(milvusClient.createCollection(newCollection),
-                "Error creating collection");
-
-            Index newIndex = new Index.Builder(settings.getMilvusCollection(), IndexType.IVF_SQ8)
-                    .withParamsInJson("{\"nlist\": 16384}").build();
-            checkMilvusResponse(milvusClient.createIndex(newIndex),
-                    "Error creating index");
+            createNewCollection(collectionName);
+            nrEntities = 0;
         }
+
+        // check if count is as expected
+        if (nrEntities != expectedCount) {
+            LOG.error("Expected {} items in Milvus collection {}, but found {}", expectedCount, collectionName, nrEntities);
+            throw new MilvusStateException("Aborting update because of inconsistent state");
+        } else {
+            LOG.info("Collection {} has {} entities", settings.getMilvusCollection(), nrEntities);
+        }
+
+        // for full update check if database is empty
+        if (isFullUpdate && nrEntities > 0) {
+            LOG.error("Found collection {} containing {} entities", collectionName, nrEntities);
+            throw new MilvusStateException("Aborting full update because Milvus target collection exists and is not empty");
+        }
+
+        // for partial update check if database is not empty
+        if (!isFullUpdate && nrEntities == 0) {
+            LOG.warn("Found empty milvus collection. Are you sure you want to do a partial update?");
+        }
+
+        //if (settings.useMilvusPartitions()) {
+        //    this.partitionNames = new HashSet(milvusClient.listPartitions(collectionName).getPartitionList());
+        //}
     }
 
-    private void checkMilvusResponse(Response response, String errorMsg) throws EuropeanaApiException {
+    private void createNewCollection(String collectionName) {
+        // Method is copied from https://bitbucket.org/jhn-ngo/recsy-xx/src/master/src/engines/searchers/engine.py
+        CollectionMapping newCollection = new CollectionMapping.Builder(collectionName, 1024).build();
+        checkMilvusResponse(milvusClient.createCollection(newCollection),
+                "Error creating collection");
+
+        Index newIndex = new Index.Builder(settings.getMilvusCollection(), IndexType.IVF_SQ8)
+                .withParamsInJson("{\"nlist\": 16384}").build();
+        checkMilvusResponse(milvusClient.createIndex(newIndex), "Error creating index");
+    }
+
+    private void checkMilvusResponse(Response response, String errorMsg) {
         if (!response.ok()) {
             throw new MilvusStateException(errorMsg + ": " + response.getMessage());
         }
-    }
-
-    private void setupLmdb(String folder,  String tableName) {
-        File lmdbFile = new File(folder, LMDB_FILE_NAME);
-        if (lmdbFile.exists()) {
-            LOG.info("Found existing lmdb database file");
-        } else {
-            LOG.info("Creating new lmdb database file");
-        }
-
-        lmdbEnvironment = Env.create()
-                .setMapSize(LMDB_MAX_SIZE)
-                .setMaxDbs(2)
-                .open(new File(folder));
-        lmdbId2Key = lmdbEnvironment.openDbi(tableName + "_id2key", DbiFlags.MDB_CREATE);
-        lmdbKey2Id = lmdbEnvironment.openDbi(tableName + "_key2id", DbiFlags.MDB_CREATE);
     }
 
     @Override
@@ -153,10 +141,7 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
 
     @PreDestroy
     private void shutdown() {
-        if (lmdbEnvironment != null && ! lmdbEnvironment.isClosed()) {
-            LOG.info("Closing connection to local lmdb database");
-            lmdbEnvironment.close();
-        }
+        lmdbWriterService.shutdown();
         if (milvusClient != null) {
             LOG.info("Closing connection to Milvus.");
             milvusClient.close();
@@ -165,8 +150,8 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
     }
 
     @Override
-    public void write(List<? extends List<RecordVectors>> lists) throws EuropeanaApiException {
-        Long start = System.currentTimeMillis();
+    public void write(List<? extends List<RecordVectors>> lists) {
+        long start = System.currentTimeMillis();
         String setName = null;
         List<Long> ids = new ArrayList<>();
         List<List<Float>> vectors = new ArrayList<>();
@@ -174,7 +159,7 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
         for (List<RecordVectors> list : lists) {
             for (RecordVectors recvec : list) {
 
-                Long newId = writeIdToLmDb(recvec.getId());
+                long newId = lmdbWriterService.writeId(recvec.getId());
 //                String recordSetName = EuropeanaIdUtils.getSetName(recvec.getId());
 //                if (settings.useMilvusPartitions() && setName == null) {
 //                    setName = recordSetName;
@@ -201,31 +186,7 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
 
     }
 
-    private long writeIdToLmDb(String key) {
-        // Note that in https://bitbucket.org/jhn-ngo/recsy-xx/src/master/src/recommenders/europeana/indexers/milvus_indexer.py#lines-126
-        // keys are encoded using the default Python encode() method (meaning UTF-8) and
-        Long newId;
-        synchronized (idLock) {
-            id++;
-            newId = id;
-        }
-
-        // For writing to lmdb we followed this tutorial
-        // https://github.com/lmdbjava/lmdbjava/blob/master/src/test/java/org/lmdbjava/TutorialTest.java
-        ByteBuffer keyValue = ByteBuffer.allocateDirect(LMDB_MAX_KEY_SIZE);
-        keyValue.put(Arrays.copyOfRange(key.getBytes(StandardCharsets.UTF_8), 0, LMDB_MAX_KEY_SIZE)).flip();
-        ByteBuffer idValue = ByteBuffer.allocateDirect(Long.BYTES).putLong(newId).flip();
-
-        try (Txn<ByteBuffer> transaction = lmdbEnvironment.txnWrite()) {
-            // TODO despite setting NODUPDATA and NOOVERWRITE we can reuse an existing database file!?!
-            lmdbKey2Id.put(transaction, keyValue, idValue, PutFlags.MDB_NODUPDATA, PutFlags.MDB_NOOVERWRITE);
-            lmdbId2Key.put(transaction, idValue, keyValue, PutFlags.MDB_NODUPDATA, PutFlags.MDB_NOOVERWRITE);
-        }
-
-        return newId;
-    }
-
-    private void writeToMilvus(String setName, List<Long> ids, List<List<Float>> vectors) throws EuropeanaApiException {
+    private void writeToMilvus(String setName, List<Long> ids, List<List<Float>> vectors) {
         if (setName == null) {
             LOG.trace("Writing {} records to Milvus...", ids.size());
         } else {

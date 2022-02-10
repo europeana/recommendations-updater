@@ -108,12 +108,12 @@
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
-        <!-- For storing batch results-->
-        <dependency>
-            <groupId>org.hsqldb</groupId>
-            <artifactId>hsqldb</artifactId>
-            <scope>runtime</scope>
-        </dependency>
+        <!-- For storing Spring batch results-->
+<!--        <dependency>-->
+<!--            <groupId>org.hsqldb</groupId>-->
+<!--            <artifactId>hsqldb</artifactId>-->
+<!--            <scope>runtime</scope>-->
+<!--        </dependency>-->
 
         <!-- StringUtils -->
         <dependency>

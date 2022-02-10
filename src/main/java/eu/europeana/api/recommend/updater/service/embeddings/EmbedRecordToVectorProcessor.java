@@ -88,7 +88,11 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
         EmbeddingResponse response = getVectors(embeddingRecords.toArray(new EmbeddingRecord[0])).block();
         List<RecordVectors> result = (response == null ? null : Arrays.asList(response.getData()));
         LOG.trace("  Response = {}...", result);
-        LOG.debug("3. Generated {} vectors in {} ms", result.size(), System.currentTimeMillis() - start);
+        if (result != null) {
+            LOG.debug("3. Generated {} vectors in {} ms", result.size(), System.currentTimeMillis() - start);
+        } else {
+            LOG.warn("No response from Embeddings API!");
+        }
         return result;
     }
 }

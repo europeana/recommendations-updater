@@ -75,8 +75,8 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
             totalItemsToRead = mongoRecordRepository.countAllBy();
         } else {
             totalItemsToRead = mongoRecordRepository.countAllByTimestampUpdatedAfter(this.fromDate);
-            LOG.info("Total number of records to download {}", totalItemsToRead);
         }
+        LOG.info("Total number of records to download {}", totalItemsToRead);
         this.progressLogger = new ProgressLogger(totalItemsToRead, settings.getLogInterval());
     }
 
@@ -165,7 +165,9 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
             return result;
         }
 
-        LOG.info("Done reading from Mongo!");
+        if (setsToDo.isEmpty()) {
+            LOG.info("Done reading from Mongo!");
+        }
         return null;
     }
 
