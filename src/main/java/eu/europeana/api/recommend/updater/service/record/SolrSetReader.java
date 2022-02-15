@@ -52,14 +52,22 @@ public class SolrSetReader implements Tasklet, StepExecutionListener {
     public void beforeStep(StepExecution stepExecution) {
         // check job parameters
         fromDate = JobCmdLineStarter.getFromDate(stepExecution.getJobParameters());
+        setsToDownload = JobCmdLineStarter.getSetsToProcess(stepExecution.getJobParameters());
     }
 
     @Override
     public RepeatStatus execute(StepContribution stepContribution, ChunkContext chunkContext) throws Exception {
-        connectToSolr();
-        setsToDownload = getSets(fromDate);
-        LOG.info("Found {} sets to download", setsToDownload.size());
-        closeSolr();
+        if (setsToDownload == null) {
+            // load sets from Solr
+            connectToSolr();
+            setsToDownload = getSets(fromDate);
+            LOG.info("Found {} sets to download", setsToDownload.size());
+            closeSolr();
+            return RepeatStatus.FINISHED;
+        }
+
+        // or use the ones provided on the command-line
+        LOG.info("Sets to download provided on command-line: {}", setsToDownload);
         return RepeatStatus.FINISHED;
     }
 

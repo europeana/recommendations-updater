@@ -3,6 +3,7 @@ package eu.europeana.api.recommend.updater.service.record;
 import eu.europeana.api.recommend.updater.config.JobCmdLineStarter;
 import eu.europeana.api.recommend.updater.config.JobData;
 import eu.europeana.api.recommend.updater.config.UpdaterSettings;
+import eu.europeana.api.recommend.updater.exception.MongoException;
 import eu.europeana.api.recommend.updater.model.record.Record;
 import eu.europeana.api.recommend.updater.service.ProgressLogger;
 import org.apache.logging.log4j.LogManager;
@@ -70,11 +71,18 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
         }
 
         // get total record count from Mongo
-        int totalItemsToRead;
+        int totalItemsToRead = 0;
         if (this.isFullUpdate) {
             totalItemsToRead = mongoRecordRepository.countAllBy();
-        } else {
+        } else if (this.fromDate != null) {
             totalItemsToRead = mongoRecordRepository.countAllByTimestampUpdatedAfter(this.fromDate);
+        } else if (this.setsToDo != null) {
+            StringBuilder s = new StringBuilder();
+            for (String setId : setsToDo) {
+                s.append("^/").append(setId).append("/").append("|");
+            }
+            String setsRegex = s.substring(0, s.length() - 1);
+            totalItemsToRead = mongoRecordRepository.countAllByAboutRegex(setsRegex);
         }
         LOG.info("Total number of records to download {}", totalItemsToRead);
         this.progressLogger = new ProgressLogger(totalItemsToRead, settings.getLogInterval());
@@ -107,42 +115,32 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
     // The start variable needs to be where it is, cannot be moved (S1941)
     @SuppressWarnings({"java:S1168", "java:S1941" })
     protected List<Record> doRead() {
-
-        // find work to do
-        SetCursor setCursor = setsInProgress.poll();
+        SetCursor setCursor = findWork();
         if (setCursor == null) {
-            // create new work
-            String newSet = setsToDo.poll();
-            if (newSet == null) {
-                LOG.debug("No more work");
-                return null;
-            }
-
-            Stream<Record> newStream;
-            LOG.info("Starting on set {}", newSet);
-            if (isFullUpdate) {
-                newStream = mongoRecordRepository.streamAllByAboutRegexOrderByAbout("^/" + newSet + "/");
-            } else {
-                newStream = mongoRecordRepository.streamAllByAboutRegexAndTimestampUpdatedAfterOrderByAbout("^/" + newSet + "/", fromDate);
-            }
-            setCursor = new SetCursor(newSet, newStream);
-        } else {
-            LOG.debug("Continue with set {}", setCursor.setId);
+            return null;
         }
 
         // fetch records for selected setCursor
         List<Record> result = new ArrayList<>(settings.getBatchSize());
         long start = System.currentTimeMillis();
 
-        while (!shuttingDown && setCursor.iterator.hasNext() && (result.size() < settings.getBatchSize())) {
-            Record record = setCursor.iterator.next();
-            LOG.trace("Read record {}", record.getAbout());
-            if (updateStart.after(record.getTimestampUpdated())) {
-                result.add(record);
-            } else {
-                LOG.warn("Record {} was updated after starting the update! Skipping it", record.getAbout());
+        try {
+            while (!shuttingDown && setCursor.iterator.hasNext() && (result.size() < settings.getBatchSize())) {
+                Record record = setCursor.iterator.next();
+                LOG.trace("Read record {}", record.getAbout());
+                if (updateStart.after(record.getTimestampUpdated())) {
+                    result.add(record);
+                } else {
+                    LOG.warn("Record {} was updated after starting the update! Skipping it", record.getAbout());
+                }
             }
+            setCursor.itemsRead = setCursor.itemsRead + result.size();
+        } catch (RuntimeException e) {
+            this.shuttingDown = true;
+            throw new MongoException("Error reading from Mongo for set " + setCursor.setId +
+                    ", itemsRead = "+ setCursor.itemsRead + ", cursor = "+setCursor.cursor, e);
         }
+
         if (shuttingDown) {
             // make sure we stop everything when shutdown is in progress
             LOG.debug("Closing Mongo cursor for set {}", setCursor.setId);
@@ -150,13 +148,7 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
             return null;
         }
 
-        // check if set is done or not
-        if (setCursor.iterator.hasNext()) {
-            setsInProgress.add(setCursor); // put back in queue, still work to be done
-        } else {
-            LOG.info("Finished reading set {}", setCursor.setId);
-            setCursor.cursor.close();
-        }
+        finishWork(setCursor);
 
         // return result
         if (!result.isEmpty()) {
@@ -171,16 +163,56 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
         return null;
     }
 
+    private SetCursor findWork() {
+        SetCursor result = setsInProgress.poll();
+        if (result == null) {
+            // create new work
+            String newSet = setsToDo.poll();
+            if (newSet == null) {
+                LOG.debug("No more work");
+                return null;
+            }
+
+            Stream<Record> newStream;
+            LOG.info("Starting on set {}", newSet);
+            try {
+                if (isFullUpdate || this.fromDate == null) {
+                    newStream = mongoRecordRepository.streamAllByAboutRegexOrderByAbout("^/" + newSet + "/");
+                } else {
+                    newStream = mongoRecordRepository.streamAllByAboutRegexAndTimestampUpdatedAfterOrderByAbout("^/" + newSet + "/", fromDate);
+                }
+            } catch (RuntimeException e) {
+                throw new MongoException("Error opening cursor for set " + newSet, e);
+            }
+            return new SetCursor(newSet, newStream);
+        }
+
+        LOG.debug("Continue with set {}", result.setId);
+        return result;
+    }
+
+    private void finishWork(SetCursor setCursor) {
+        // check if set is done or not
+        if (setCursor.iterator.hasNext()) {
+            setsInProgress.add(setCursor); // put back in queue, still work to be done
+        } else {
+            LOG.info("Finished reading {} items of set {}", setCursor.itemsRead, setCursor.setId);
+            setCursor.cursor.close();
+        }
+    }
+
     // keep track of the open cursors, one for each set
     private static final class SetCursor {
         private final String setId;
         private final Stream<Record> cursor;
-        private final Iterator<Record> iterator;
+        private Iterator<Record> iterator;
+        private long itemsRead;
 
         private SetCursor(String setId, Stream<Record> cursor) {
             this.setId = setId;
             this.cursor = cursor;
             this.iterator = cursor.iterator();
+            this.itemsRead = 0;
         }
 
     }

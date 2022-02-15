@@ -1,6 +1,7 @@
 package eu.europeana.api.recommend.updater.service.record;
 
 import eu.europeana.api.recommend.updater.model.record.Record;
+import org.springframework.data.mongodb.repository.Meta;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
@@ -39,11 +40,23 @@ public interface MongoRecordRepository extends MongoRepository<Record, String> {
     Integer countAllBy();
 
     /**
+     * Count the number of records for several set (provided via command-line).
+     * Note that this operation can be slow!
+     *
+     * @param setIdRegex regex filtering on set id, should be in the form of "^/<setId1>/|^/<setId2>/"
+     * @return number of records
+     *
+     */
+    Integer countAllByAboutRegex(String setIdRegex);
+
+    /**
      * Open a cursor that retrieves records that adhere to the provided regex on the about field
      *
      * @param setIdRegex regex filtering per set, should be in the form of "^/<setId>/"
      * @return cursor to all records in the database for the requested set.
      */
+    //Avoid cursor timeout when doing long reads for large sets
+    @Meta(flags = org.springframework.data.mongodb.core.query.Meta.CursorOption.NO_TIMEOUT)
     @Query(fields = FIELDS)
     Stream<Record> streamAllByAboutRegexOrderByAbout(String setIdRegex);
 
@@ -63,6 +76,7 @@ public interface MongoRecordRepository extends MongoRepository<Record, String> {
      * @param date filters records on lastModified date
      * @return cursor to all records modified after the given date
      */
+    @Meta(flags = org.springframework.data.mongodb.core.query.Meta.CursorOption.NO_TIMEOUT)
     @Query(fields = FIELDS)
     Stream<Record> streamAllByAboutRegexAndTimestampUpdatedAfterOrderByAbout(String setIdRegex, Date date);
 }

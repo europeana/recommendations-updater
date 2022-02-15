@@ -36,14 +36,17 @@ import java.util.Locale;
 public class JobCmdLineStarter implements ApplicationRunner {
 
     public static final String PARAM_UPDATE_FULL = JobData.UPDATETYPE_VALUE_FULL.toUpperCase(Locale.ROOT);
-    public static final String PARAM_UPDATE_PARTIAL = JobData.FROM_KEY;
+    public static final String PARAM_UPDATE_FROM = JobData.FROM_KEY;
+    public static final String PARAM_UPDATE_SETS = JobData.SETS_KEY;
     public static final String PARAM_DELETE_DB = JobData.DELETE_DB.toUpperCase(Locale.ROOT);
 
     private static final Logger LOG = LogManager.getLogger(JobCmdLineStarter.class);
 
-    private static final String FULL_DESCRIPTION = "'--" + PARAM_UPDATE_FULL + "' parameter";
-    private static final String PARTIAL_DESCRIPTION = "'--" + PARAM_UPDATE_PARTIAL + "=[yyyy-MM-ddThh:mm:ss]' parameter and date value";
+    private static final String SET_SEPARATOR = ",";
 
+    private static final String FULL_DESCRIPTION = "'--" + PARAM_UPDATE_FULL + "' parameter";
+    private static final String PARTIAL_DESCRIPTION = "'--" + PARAM_UPDATE_FROM + "=[yyyy-MM-ddThh:mm:ss]' parameter and date value";
+    private static final String SETS_DESCRIPTION = "'--" + PARAM_UPDATE_SETS + "=<setIds>' parameter and comma-separated set-id values";
 
     private final JobLauncher jobLauncher;
     private final Job job;
@@ -68,12 +71,15 @@ public class JobCmdLineStarter implements ApplicationRunner {
 
         JobParametersBuilder jobParamBuilder = new JobParametersBuilder();
         if (args.getOptionNames().contains(PARAM_UPDATE_FULL)) {
-           processFullUpdate(args, jobParamBuilder);
-        } else if (args.getOptionNames().contains(PARAM_UPDATE_PARTIAL)) {
+            processFullUpdate(args, jobParamBuilder);
+        } else if (args.getOptionNames().contains(PARAM_UPDATE_FROM)) {
             processPartialUpdate(args, jobParamBuilder);
+        } else if (args.getOptionNames().contains(PARAM_UPDATE_SETS)) {
+            processSets(args, jobParamBuilder);
         } else {
-            throw new ConfigurationException("Either command-line " + FULL_DESCRIPTION + " or a " +
-                    PARTIAL_DESCRIPTION + " needs to be provided");
+            throw new ConfigurationException("Specify either command-line " + FULL_DESCRIPTION +
+                    ", " + PARTIAL_DESCRIPTION +
+                    " or " + SETS_DESCRIPTION);
         }
 
         if (args.getOptionNames().contains(PARAM_DELETE_DB)) {
@@ -92,7 +98,7 @@ public class JobCmdLineStarter implements ApplicationRunner {
     }
 
     private void processFullUpdate(ApplicationArguments args, JobParametersBuilder jobParamBuilder) throws ConfigurationException {
-        if (args.getOptionNames().contains(PARAM_UPDATE_PARTIAL)) {
+        if (args.getOptionNames().contains(PARAM_UPDATE_FROM)) {
             throw new ConfigurationException("Both full and partial update arguments found. Please specify either the " +
                     FULL_DESCRIPTION + " or a " + PARTIAL_DESCRIPTION);
         }
@@ -101,7 +107,7 @@ public class JobCmdLineStarter implements ApplicationRunner {
 
     private void processPartialUpdate(ApplicationArguments args, JobParametersBuilder jobParamBuilder) throws ConfigurationException {
         jobParamBuilder.addString(JobData.UPDATETYPE_KEY, JobData.UPDATETYPE_VALUE_PARTIAL);
-        List<String> fromDate = args.getOptionValues(PARAM_UPDATE_PARTIAL);
+        List<String> fromDate = args.getOptionValues(PARAM_UPDATE_FROM);
         if (fromDate == null || fromDate.isEmpty() || StringUtils.isBlank(fromDate.get(0))) {
             throw new ConfigurationException("Please specify a " + PARTIAL_DESCRIPTION);
         }
@@ -115,6 +121,19 @@ public class JobCmdLineStarter implements ApplicationRunner {
             date = Date.from(from.atStartOfDay(ZoneId.systemDefault()).toInstant());
         }
         jobParamBuilder.addDate(JobData.FROM_KEY, date);
+    }
+
+    private void processSets(ApplicationArguments args, JobParametersBuilder jobParamBuilder) throws ConfigurationException {
+        jobParamBuilder.addString(JobData.UPDATETYPE_KEY, JobData.UPDATETYPE_VALUE_PARTIAL);
+        List<String> setIds = args.getOptionValues(PARAM_UPDATE_SETS);
+
+        // validate
+        String ids = setIds.get(0);
+        if (StringUtils.isBlank(ids)) {
+            throw new ConfigurationException( PARAM_UPDATE_SETS + " parameter found, but no set ids provided!");
+        }
+
+        jobParamBuilder.addString(JobData.SETS_KEY, ids);
     }
 
     private void processDelete(JobParametersBuilder jobParametersBuilder) {
@@ -132,5 +151,13 @@ public class JobCmdLineStarter implements ApplicationRunner {
 
     public static boolean isDeleteDb(JobParameters jobParameters) {
         return Boolean.valueOf(jobParameters.getString(JobData.DELETE_DB));
+    }
+
+    public static List<String> getSetsToProcess(JobParameters jobParameters) {
+        String sets = jobParameters.getString(JobData.SETS_KEY);
+        if (StringUtils.isBlank(sets)) {
+            return null;
+        }
+        return Arrays.asList(sets.split(SET_SEPARATOR));
     }
 }

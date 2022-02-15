@@ -19,6 +19,8 @@
 
         <Logger name="eu.europeana.api.recommend.updater.config.JobCmdLineStarter" level="DEBUG"/>
 
+        <Logger name="eu.europeana.api.recommend.updater.service.record.SolrSetReader" level="INFO"/>
+
         <!-- Set to DEBUG to see all requests to Mongo -->
         <Logger name="org.mongodb.driver" level="INFO"/>
 
