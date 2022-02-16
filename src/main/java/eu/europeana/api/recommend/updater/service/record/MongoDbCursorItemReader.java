@@ -29,6 +29,8 @@ import java.util.stream.Stream;
  * @author Patrick Ehlert
  */
 @Service
+@SuppressWarnings("fb-contrib:USFW_UNSYNCHRONIZED_SINGLETON_FIELD_WRITES") // due to the way Spring-Batch works there
+// is no need to synchronize changing instance variables in doOpen or doClose methods, or when setting shutttingDown=true
 public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemReader<List<Record>> implements StepExecutionListener {
 
     private static final Logger LOG = LogManager.getLogger(MongoDbCursorItemReader.class);
@@ -202,6 +204,7 @@ public class MongoDbCursorItemReader extends AbstractItemCountingItemStreamItemR
     }
 
     // keep track of the open cursors, one for each set
+    @SuppressWarnings("fb-contrib:FCBL_FIELD_COULD_BE_LOCAL")
     private static final class SetCursor {
         private final String setId;
         private final Stream<Record> cursor;

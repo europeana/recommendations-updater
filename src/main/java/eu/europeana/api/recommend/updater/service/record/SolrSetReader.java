@@ -28,6 +28,8 @@ import java.util.*;
 /**
  * Service that interacts with Solr engine to retrieve a list of available data sets
  */
+@SuppressWarnings("fb-contrib:USFW_UNSYNCHRONIZED_SINGLETON_FIELD_WRITES") // due to the way Spring-Batch works there
+// is no need to synchronize changing instance variables in methods
 @Service
 public class SolrSetReader implements Tasklet, StepExecutionListener {
 
@@ -57,7 +59,7 @@ public class SolrSetReader implements Tasklet, StepExecutionListener {
 
     @Override
     public RepeatStatus execute(StepContribution stepContribution, ChunkContext chunkContext) throws Exception {
-        if (setsToDownload == null) {
+        if (setsToDownload == null || setsToDownload.isEmpty()) {
             // load sets from Solr
             connectToSolr();
             setsToDownload = getSets(fromDate);

@@ -69,6 +69,9 @@ public class LmdbWriterService {
      * @return the number of items in the lmdb database
      * @throws RuntimeException if the state is different than expected
      */
+    // user-provided file path is intentional
+    // also singleton class writing to instance variables is intentional
+    @SuppressWarnings({"findsecbugs:PATH_TRAVERSAL_IN", "fb-contrib:USFW_UNSYNCHRONIZED_SINGLETON_FIELD_WRITES"})
     public long init(boolean isFullUpdate, boolean isDeleteDb) {
         String milvusCollection = settings.getMilvusCollection();
         String rootFolder = settings.getLmdbFolder();
@@ -108,7 +111,7 @@ public class LmdbWriterService {
                 .open(file.getParentFile());
 
         List<byte[]> dbiNames = result.getDbiNames();
-        List<String> dbis = new ArrayList<>();
+        List<String> dbis = new ArrayList<>(1); // we expect only 1 dbi
         for (byte[] dbiName : dbiNames) {
             dbis.add(new String(dbiName, Charset.defaultCharset()));
         }
@@ -151,8 +154,8 @@ public class LmdbWriterService {
     }
 
     public long writeId(String key) {
-        if (count == -1L) {
-            throw new IllegalStateException("Run checkState() before doing a write!");
+        if (count == -1L || environmentId2Key == null || environmentKey2Id == null) {
+            throw new IllegalStateException("Run init method before doing a write!");
         }
         // Note that in https://bitbucket.org/jhn-ngo/recsy-xx/src/master/src/recommenders/europeana/indexers/milvus_indexer.py#lines-126
         // keys are encoded using the default Python encode() method (meaning UTF-8) and

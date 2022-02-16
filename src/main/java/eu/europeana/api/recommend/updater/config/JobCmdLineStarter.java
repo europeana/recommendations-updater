@@ -17,10 +17,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 
 /**
  * Processes command-line parameters that determine what kind of update to start; either a full update
@@ -150,13 +147,13 @@ public class JobCmdLineStarter implements ApplicationRunner {
     }
 
     public static boolean isDeleteDb(JobParameters jobParameters) {
-        return Boolean.valueOf(jobParameters.getString(JobData.DELETE_DB));
+        return Boolean.parseBoolean(jobParameters.getString(JobData.DELETE_DB));
     }
 
     public static List<String> getSetsToProcess(JobParameters jobParameters) {
         String sets = jobParameters.getString(JobData.SETS_KEY);
         if (StringUtils.isBlank(sets)) {
-            return null;
+            return Collections.EMPTY_LIST;
         }
         return Arrays.asList(sets.split(SET_SEPARATOR));
     }
