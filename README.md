@@ -30,12 +30,19 @@ go to the application root where the pom.xml is located and excute
 
 ### Command-line parameters
 
-The command-line option `--FULL` is required (to start a full update covering all records) or the option `--from=<date>`
-should be provided to do a partial update with all records created or modified after the provided date.
-The date needs to be in ISO format, e.g. `--from=2021-10-08` or `--from=2021-10-08T12:15:00`
+One of the following 3 command-line options is required:
 
-Optionally the `--DELETE` option can be supplied which will delete existing Milvus (and Lmdb) data before
-starting the update.
+  1. `--FULL` to start a full update covering all records
+  2. `--from=<date>` to start a partial update with all records created or modified after the provided date.
+      The date needs to be in ISO format, e.g. `--from=2021-10-08` or `--from=2021-10-08T12:15:00`
+  3. `--sets=<setId1>,<setId2>` to start a update for one or more sets. The list of sets should be comma-separated
+
+At the moment the 3 options cannot be combined.
+
+Optional extra command-line options are:
+  * `--DELETE` to delete the existing Milvus (and Lmdb) data before starting the update
+  * `--batch` to modify the batch size (overrides option in configuration file)
+  * `--threads` to modify the number of threads (sets) that are updated in parallel (overrides option in configuration file)
 
 ## License
 
