@@ -15,7 +15,6 @@ public class Entity  implements Serializable {
 
     private static final long serialVersionUID = 932678045340604732L;
 
-    @Id
     private String about;
     private Map<String, List<String>> prefLabel;
     private Map<String, List<String>> altLabel;

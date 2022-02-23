@@ -37,28 +37,55 @@ public class Record implements Serializable {
         return about;
     }
 
+    public void setAbout(String about) {
+        this.about = about;
+    }
+
     public List<Proxy> getProxies() {
         return proxies;
+    }
+
+    public void setProxies(List<Proxy> proxies) {
+        this.proxies = proxies;
     }
 
     public List<Agent> getAgents() {
         return agents;
     }
 
+    public void setAgents(List<Agent> agents) {
+        this.agents = agents;
+    }
+
     public List<Concept> getConcepts() {
         return concepts;
+    }
+
+    public void setConcepts(List<Concept> concepts) {
+        this.concepts = concepts;
     }
 
     public List<Place> getPlaces() {
         return places;
     }
 
+    public void setPlaces(List<Place> places) {
+        this.places = places;
+    }
+
     public List<Timespan> getTimespans() {
         return timespans;
+    }
+
+    public void setTimespans(List<Timespan> timespans) {
+        this.timespans = timespans;
     }
 
     public Date getTimestampUpdated() {
         return timestampUpdated;
     }
 
+    public void setTimestampUpdated(Date timestampUpdated) {
+        this.timestampUpdated = timestampUpdated;
+    }
 }

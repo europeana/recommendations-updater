@@ -31,17 +31,17 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
 
     @Override
     public List<EmbeddingRecord> process(final List<Record> records) {
-        Long start = System.currentTimeMillis();
+        long start = System.currentTimeMillis();
         List<EmbeddingRecord> result = new ArrayList<>(records.size());
         for (Record rec : records) {
             LOG.trace("Processing record {}, lastModified = {}", rec.getAbout(), rec.getTimestampUpdated());
 
             // gather all entities for easy reference
             List<Entity> entities = new ArrayList<>();
-            entities.addAll(rec.getAgents());
-            entities.addAll(rec.getConcepts());
-            entities.addAll(rec.getPlaces());
-            entities.addAll(rec.getTimespans());
+            entities.addAll(createEntityList(rec.getAgents()));
+            entities.addAll(createEntityList(rec.getConcepts()));
+            entities.addAll(createEntityList(rec.getPlaces()));
+            entities.addAll(createEntityList(rec.getTimespans()));
 
             String id = rec.getAbout();
             List<String> title = new ArrayList<>();
@@ -58,22 +58,22 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
 
                 addAllValues(creator, p.getDcCreator(), entities, true);
                 addAllValues(creator, p.getDcContributor(), entities, true);
-                addAllValues(creator, p.getDcSubject(), new ArrayList<>(rec.getAgents()), false);
-                addAllValues(creator, p.getEdmHasMet(), new ArrayList<>(rec.getAgents()), false);
+                addAllValues(creator, p.getDcSubject(), createEntityList(rec.getAgents()), false);
+                addAllValues(creator, p.getEdmHasMet(), createEntityList(rec.getAgents()), false);
 
                 addAllValues(tags, p.getDcType(), entities, true);
                 addAllValues(tags, p.getDctermsMedium(), entities, true);
                 addAllValues(tags, p.getDcFormat(), entities, true);
-                addAllValues(tags, p.getDcSubject(), new ArrayList<>(rec.getConcepts()), true);
+                addAllValues(tags, p.getDcSubject(), createEntityList(rec.getConcepts()), true);
 
                 addAllValues(places, p.getDctermsSpatial(), entities, true);
                 addAllValues(places, p.getEdmCurrentLocation(), entities, true);
-                addAllValues(places, p.getDcSubject(), new ArrayList<>(rec.getPlaces()), false);
+                addAllValues(places, p.getDcSubject(), createEntityList(rec.getPlaces()), false);
 
                 addAllValues(times, p.getDctermsCreated(), entities, true);
                 addAllValues(times, p.getDctermsIssued(), entities, true);
                 addAllValues(times, p.getDctermsTemporal(), entities, true);
-                addAllValues(times, p.getEdmHasMet(), new ArrayList<>(rec.getTimespans()), false);
+                addAllValues(times, p.getEdmHasMet(), createEntityList(rec.getTimespans()), false);
             }
 
             EmbeddingRecord embedRecord = new EmbeddingRecord(
@@ -89,6 +89,13 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
         }
         LOG.debug("2. Generated {} EmbeddingRecords in {} ms", result.size(), System.currentTimeMillis() - start);
         return result;
+    }
+
+    private List<Entity> createEntityList(List<? extends Entity> list) {
+        if (list == null) {
+            return new ArrayList<>();
+        }
+        return new ArrayList<>(list);
     }
 
     /**
@@ -154,11 +161,11 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
             if (languageMap.containsKey(ENGLISH)) {
                 return languageMap.get(ENGLISH);
             } else {
-                LOG.warn("No English {} for entity {}", labelName, entityId);
+                LOG.trace("No English {} for entity {}", labelName, entityId);
                 return languageMap.values().iterator().next();
             }
         } else {
-            LOG.warn("No {} for entity {}", labelName, entityId);
+            LOG.trace("No {} for entity {}", labelName, entityId);
         }
         return Collections.emptyList();
     }
