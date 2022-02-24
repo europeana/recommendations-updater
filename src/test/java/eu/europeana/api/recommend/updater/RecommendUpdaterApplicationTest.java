@@ -10,7 +10,7 @@ import org.springframework.test.context.BootstrapWith;
 /**
  * Basic test for loading context
  */
-@ActiveProfiles("test") // to avoid initialising Mongo
+@ActiveProfiles("test") // to avoid initialising Mongo (see also application-test.yml)
 @SpringBootTest
 @BootstrapWith(NoJobStart.class)
 class RecommendUpdaterApplicationTest {

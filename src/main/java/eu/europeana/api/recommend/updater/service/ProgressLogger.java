@@ -2,8 +2,8 @@ package eu.europeana.api.recommend.updater.service;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.joda.time.Duration;
-import org.joda.time.Period;
+
+import java.time.Duration;
 
 /**
  * Utility class to log processing progress after roughly ever x seconds.
@@ -41,12 +41,13 @@ public class ProgressLogger {
      * @param newItemsProcessed the number of new items that were processed
      */
     public synchronized void logProgress(long newItemsProcessed) {
+        long now = System.currentTimeMillis();
         this.itemsDone = itemsDone + newItemsProcessed;
+        Duration d = Duration.ofMillis(now - lastLogTime);
 
-        Duration d = new Duration(lastLogTime, System.currentTimeMillis());
-        if (logAfterSeconds > 0 && d.getMillis() / MS_PER_SEC > logAfterSeconds) {
+        if (logAfterSeconds > 0 && d.getSeconds() >= logAfterSeconds) {
             if (totalItems > 0) {
-                double itemsPerMS = itemsDone * 1D / (System.currentTimeMillis() - startTime);
+                double itemsPerMS = itemsDone * 1D / (now - startTime);
                 if (itemsPerMS * MS_PER_SEC > 1.0) {
                     LOG.info("Retrieved {} items of {} ({} records/sec). Expected time remaining is {}", itemsDone, totalItems,
                             Math.round(itemsPerMS * MS_PER_SEC), getDurationText(Math.round((totalItems - itemsDone) / itemsPerMS)));
@@ -57,7 +58,7 @@ public class ProgressLogger {
             } else {
                 LOG.info("Retrieved {} items", itemsDone);
             }
-            lastLogTime = System.currentTimeMillis();
+            lastLogTime = now;
         }
     }
 
@@ -68,15 +69,17 @@ public class ProgressLogger {
      */
     public static String getDurationText(long durationInMs) {
         String result;
-        Period period = new Period(durationInMs);
-        if (period.getDays() >= 1) {
-            result = String.format("%d days, %d hours and %d minutes", period.getDays(), period.getHours(), period.getMinutes());
-        } else if (period.getHours() >= 1) {
-            result = String.format("%d hours and %d minutes", period.getHours(), period.getMinutes());
-        } else if (period.getMinutes() >= 1){
-            result = String.format("%d minutes and %d seconds", period.getMinutes(), period.getSeconds());
+        Duration d = Duration.ofMillis(durationInMs);
+        if (d.toDaysPart() >= 1) {
+            result = String.format("%d days, %d hours and %d minutes", d.toDaysPart(), d.toHoursPart(), d.toMinutesPart());
+        } else if (d.toHoursPart() >= 1) {
+            result = String.format("%d hours and %d minutes", d.toHoursPart(), d.toMinutesPart());
+        } else if (d.toMinutesPart() >= 1) {
+            result = String.format("%d minutes and %d seconds", d.toMinutesPart(), d.toSecondsPart());
+        } else if (d.getSeconds() >= 2) {
+            result = String.format("%d seconds", d.toSeconds());
         } else {
-            result = String.format("%d.%d seconds", period.getSeconds(), period.getMillis());
+            result = String.format("%d milliseconds", d.toMillis());
         }
         return result;
     }
