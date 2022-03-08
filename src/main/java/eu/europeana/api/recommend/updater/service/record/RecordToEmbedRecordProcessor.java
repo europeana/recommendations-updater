@@ -5,6 +5,7 @@ import eu.europeana.api.recommend.updater.model.record.Entity;
 import eu.europeana.api.recommend.updater.model.record.Proxy;
 import eu.europeana.api.recommend.updater.model.record.Record;
 import eu.europeana.api.recommend.updater.util.UriUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.batch.item.ItemProcessor;
@@ -136,8 +137,11 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
             }
             for (Entity entity : entities) {
                 if (value.equalsIgnoreCase(entity.getAbout())) {
-                    LOG.trace("  Uri {} refers to entity {} -> adding entity labels", value, entity.getAbout());
-                    target.addAll(getEnglishPrefAndAltLabel(entity));
+                    LOG.trace("  Uri {} refers to entity {} -> adding entity label...", value, entity.getAbout());
+                    String prefLabel = getFirstPrefLabel(entity);
+                    if (StringUtils.isNotBlank(prefLabel)) {
+                        target.add(prefLabel);
+                    }
                 }
             }
         } else if (addLiterals) {
@@ -146,26 +150,27 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
     }
 
     /**
-     * Return the English prefLabel and altLabel of an entity (or the labels in any other language when there is no
-     * English label).
+     * Return the first found preflabel of an entity. If there are English prefLabels, we pick the first from that.
+     * Otherwise we pick one in the first language we find.
      */
-    private List<String> getEnglishPrefAndAltLabel(Entity entity) {
-        List<String> result = new ArrayList<>();
-        result.addAll(getLabel(entity.getPrefLabel(), "prefLabels", entity.getAbout()));
-        result.addAll(getLabel(entity.getAltLabel(), "altLabels", entity.getAbout()));
-        return result;
+    private String getFirstPrefLabel(Entity entity) {
+        List<String> labels = getLabel(entity.getPrefLabel(), entity.getAbout());
+        if (labels.isEmpty()) {
+            return null;
+        }
+        return labels.get(0);
     }
 
-    private List<String> getLabel(Map<String, List<String>> languageMap, String labelName, String entityId) {
+    private List<String> getLabel(Map<String, List<String>> languageMap, String entityId) {
         if (languageMap != null && !languageMap.isEmpty()) {
             if (languageMap.containsKey(ENGLISH)) {
                 return languageMap.get(ENGLISH);
             } else {
-                LOG.trace("No English {} for entity {}", labelName, entityId);
+                LOG.trace("No English preflabel for entity {}", entityId);
                 return languageMap.values().iterator().next();
             }
         } else {
-            LOG.trace("No {} for entity {}", labelName, entityId);
+            LOG.trace("No preflabels for entity {}",  entityId);
         }
         return Collections.emptyList();
     }

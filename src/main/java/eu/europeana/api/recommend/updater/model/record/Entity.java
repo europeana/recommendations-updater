@@ -17,7 +17,6 @@ public class Entity  implements Serializable {
 
     private String about;
     private Map<String, List<String>> prefLabel;
-    private Map<String, List<String>> altLabel;
 
     public String getAbout() {
         return about;
@@ -35,11 +34,4 @@ public class Entity  implements Serializable {
         this.prefLabel = prefLabel;
     }
 
-    public Map<String, List<String>> getAltLabel() {
-        return altLabel;
-    }
-
-    public void setAltLabel(Map<String, List<String>> altLabel) {
-        this.altLabel = altLabel;
-    }
 }

@@ -28,14 +28,10 @@ public class RecordToEmbedRecordProcessorTest {
     private static final String AGENT_ABOUT = "http://data.europeana.eu/agent/base/007";
     private static final String AGENT_PREFLABEL_EN = "James Bond";
     private static final String AGENT_PREFLABEL_CN = "占士邦";
-    private static final String AGENT_ALTLABEL_EN = "Agent 007";
-    private static final String AGENT_ALTLABEL_CN = "特工007";
 
     private static final String CONCEPT_ABOUT = "http://data.europeana.eu/concept/base/1";
-    private static final String CONCEPT_ALTLABEL_NL = "Film";
 
     private static final String TIMESPAN1_ABOUT = "http://semium.org/time/1977";
-    private static final String TIMESPAN1_ALTLABEL_EN = "Somewhere back in the 70s";
     private static final String TIMESPAN2_ABOUT = "http://semium.org/time/AD2xxx";
     private static final String TIMESPAN2_PREFLABEL_EN = "Second millenium AD";
 
@@ -137,11 +133,10 @@ public class RecordToEmbedRecordProcessorTest {
         }});
         EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
 
-        assertEquals(4, result.getCreator().length);
+        assertEquals(3, result.getCreator().length);
         assertEquals(DC_CREATOR, result.getCreator()[0]);
         assertEquals(DC_CONTRIBUTOR, result.getCreator()[1]);
         assertEquals(AGENT_PREFLABEL_EN, result.getCreator()[2]);
-        assertEquals(AGENT_ALTLABEL_EN, result.getCreator()[3]);
     }
 
     @Test
@@ -154,12 +149,10 @@ public class RecordToEmbedRecordProcessorTest {
         }});
         EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
 
-        assertEquals(5, result.getCreator().length);
+        assertEquals(3, result.getCreator().length);
         assertEquals(DC_CREATOR, result.getCreator()[0]);
         assertEquals(AGENT_PREFLABEL_EN, result.getCreator()[1]);
-        assertEquals(AGENT_ALTLABEL_EN, result.getCreator()[2]);
-        assertEquals(CONCEPT_ALTLABEL_NL, result.getCreator()[3]);
-        assertEquals(DC_CONTRIBUTOR, result.getCreator()[4]);
+        assertEquals(DC_CONTRIBUTOR, result.getCreator()[2]);
     }
 
 
@@ -182,10 +175,9 @@ public class RecordToEmbedRecordProcessorTest {
         }});
         EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
 
-        assertEquals(3, result.getTags().length);
+        assertEquals(2, result.getTags().length);
         assertEquals(DC_TERMS_MEDIUM, result.getTags()[0]);
         assertEquals(DC_SUBJECT, result.getTags()[1]);
-        assertEquals(CONCEPT_ALTLABEL_NL, result.getTags()[2]);
     }
 
     @Test
@@ -212,9 +204,8 @@ public class RecordToEmbedRecordProcessorTest {
         record.getProxies().get(0).getEdmHasMet().put("def", Arrays.asList(TIMESPAN1_ABOUT, TIMESPAN2_ABOUT, "http://notfound.com"));
         EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
 
-        assertEquals(2, result.getTimes().length);
-        assertEquals(TIMESPAN1_ALTLABEL_EN, result.getTimes()[0]);
-        assertEquals(TIMESPAN2_PREFLABEL_EN, result.getTimes()[1]);
+        assertEquals(1, result.getTimes().length);
+        assertEquals(TIMESPAN2_PREFLABEL_EN, result.getTimes()[0]);
     }
 
     @Test
@@ -233,10 +224,9 @@ public class RecordToEmbedRecordProcessorTest {
         record.setProxies(Arrays.asList(record.getProxies().get(0), proxy2, proxy3));
 
         EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
-        assertEquals(3, result.getTimes().length);
-        assertEquals(TIMESPAN1_ALTLABEL_EN, result.getTimes()[0]);
-        assertEquals(TIMESPAN2_PREFLABEL_EN, result.getTimes()[1]);
-        assertEquals("1891", result.getTimes()[2]);
+        assertEquals(2, result.getTimes().length);
+        assertEquals(TIMESPAN2_PREFLABEL_EN, result.getTimes()[0]);
+        assertEquals("1891", result.getTimes()[1]);
     }
 
    private Record createTestRecord() {
@@ -279,22 +269,13 @@ public class RecordToEmbedRecordProcessorTest {
             put("cn", Collections.singletonList(AGENT_PREFLABEL_CN));
             put("en", Collections.singletonList(AGENT_PREFLABEL_EN));
         }});
-        agent.setAltLabel(new HashMap<>() {{
-            put("cn", Collections.singletonList(AGENT_ALTLABEL_CN));
-            put("en", Collections.singletonList(AGENT_ALTLABEL_EN));
-        }});
 
         Concept concept = new Concept();
         concept.setAbout(CONCEPT_ABOUT);
-        concept.setAltLabel(new HashMap<>() {{
-            put("nl", Collections.singletonList(CONCEPT_ALTLABEL_NL));
-        }});
 
         Timespan timespan1 = new Timespan();
         timespan1.setAbout(TIMESPAN1_ABOUT);
-        timespan1.setAltLabel(new HashMap<>() {{
-                put("en", Collections.singletonList(TIMESPAN1_ALTLABEL_EN));
-        }});
+
         Timespan timespan2 = new Timespan();
         timespan2.setAbout(TIMESPAN2_ABOUT);
         timespan2.setPrefLabel(new HashMap<>() {{
