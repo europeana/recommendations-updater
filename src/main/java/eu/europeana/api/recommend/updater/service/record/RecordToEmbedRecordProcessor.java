@@ -11,10 +11,7 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Pulls the relevant data out of a record and puts it in a new EmbeddingRecord object (for sending to the
@@ -45,12 +42,12 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
             entities.addAll(createEntityList(rec.getTimespans()));
 
             String id = rec.getAbout();
-            List<String> title = new ArrayList<>();
-            List<String> description = new ArrayList<>();
-            List<String> creator = new ArrayList<>();
-            List<String> tags = new ArrayList<>();
-            List<String> places = new ArrayList<>();
-            List<String> times = new ArrayList<>();
+            Collection<String> title = new ArrayList<>();
+            Collection<String> description = new ArrayList<>();
+            Collection<String> creator = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+            Collection<String> tags = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+            Collection<String> places = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+            Collection<String> times = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
             for (Proxy p : rec.getProxies()) {
                 addAllValues(title, p.getDcTitle(), null, true);
                 addAllValues(title, p.getDctermsAlternative(), null, true);
@@ -105,7 +102,7 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
      * If the list of entities is not null then we also check for uris. For value that is an uri and that refers to an
      * existing entity we add the entities prefLabels and altLabels instead.
      */
-    private void addAllValues(List<String> target, Map<String, List<String>> source, List<Entity> entities, boolean addLiterals) {
+    private void addAllValues(Collection<String> target, Map<String, List<String>> source, List<Entity> entities, boolean addLiterals) {
         if (source == null || source.keySet().isEmpty()) {
             return;
         }
@@ -124,31 +121,31 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
         }
     }
 
-    private void addValuesAndResolveUris(List<String> target, List<String> values, List<Entity> entities, boolean addLiterals) {
+    private void addValuesAndResolveUris(Collection<String> target, List<String> values, List<Entity> entities, boolean addLiterals) {
         for (String value : values) {
-            addValueAndResolveUri(target, value, entities, addLiterals);
+            if (UriUtils.isUri(value)) {
+                resolveEntityUri(target, value, entities);
+            } else if (addLiterals) {
+                target.add(value);
+            }
         }
     }
 
-    private void addValueAndResolveUri(List<String> target, String value, List<Entity> entities, boolean addLiterals) {
-        if (UriUtils.isUri(value)) {
-            if (entities == null) {
-                return;
-            }
-            for (Entity entity : entities) {
-                if (value.equalsIgnoreCase(entity.getAbout())) {
-                    LOG.trace("  Uri {} refers to entity {} -> adding entity label...", value, entity.getAbout());
-                    String prefLabel = getFirstPrefLabel(entity);
-                    if (StringUtils.isNotBlank(prefLabel)) {
-                        target.add(prefLabel);
-                    }
+    private void resolveEntityUri(Collection<String> target, String value, List<Entity> entities) {
+        if (entities == null) {
+            return;
+        }
+        for (Entity entity : entities) {
+            if (value.equalsIgnoreCase(entity.getAbout())) {
+                String prefLabel = getFirstPrefLabel(entity);
+                LOG.trace("  Uri {} refers to entity {} with preflabel {}", value, entity.getAbout(), prefLabel);
+                if (StringUtils.isNotBlank(prefLabel)) {
+                    target.add(prefLabel);
                 }
             }
-        } else if (addLiterals) {
-            target.add(value);
         }
     }
-
+    
     /**
      * Return the first found preflabel of an entity. If there are English prefLabels, we pick the first from that.
      * Otherwise we pick one in the first language we find.

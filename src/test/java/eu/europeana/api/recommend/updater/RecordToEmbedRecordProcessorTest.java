@@ -5,9 +5,7 @@ import eu.europeana.api.recommend.updater.model.record.*;
 import eu.europeana.api.recommend.updater.service.record.RecordToEmbedRecordProcessor;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -134,8 +132,8 @@ public class RecordToEmbedRecordProcessorTest {
         EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
 
         assertEquals(3, result.getCreator().length);
-        assertEquals(DC_CREATOR, result.getCreator()[0]);
-        assertEquals(DC_CONTRIBUTOR, result.getCreator()[1]);
+        assertEquals(DC_CONTRIBUTOR, result.getCreator()[0]);
+        assertEquals(DC_CREATOR, result.getCreator()[1]);
         assertEquals(AGENT_PREFLABEL_EN, result.getCreator()[2]);
     }
 
@@ -150,9 +148,9 @@ public class RecordToEmbedRecordProcessorTest {
         EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
 
         assertEquals(3, result.getCreator().length);
-        assertEquals(DC_CREATOR, result.getCreator()[0]);
-        assertEquals(AGENT_PREFLABEL_EN, result.getCreator()[1]);
-        assertEquals(DC_CONTRIBUTOR, result.getCreator()[2]);
+        assertEquals(DC_CONTRIBUTOR, result.getCreator()[0]);
+        assertEquals(DC_CREATOR, result.getCreator()[1]);
+        assertEquals(AGENT_PREFLABEL_EN, result.getCreator()[2]);
     }
 
 
@@ -164,6 +162,21 @@ public class RecordToEmbedRecordProcessorTest {
         assertEquals(2, result.getTags().length);
         assertEquals(DC_TERMS_MEDIUM, result.getTags()[0]);
         assertEquals(DC_SUBJECT, result.getTags()[1]);
+    }
+
+    @Test
+    public void testTagsNoDuplicate() {
+        Record record = createTestRecord();
+        // set same value for dcFormat as for dcSubject, but in uppercase to test case-insensitive
+        String duplicateValue = record.getProxies().get(0).getDcSubject().get("en").get(0).toUpperCase(Locale.ROOT);
+        record.getProxies().get(0).setDcFormat(new HashMap<>() {{
+            put("en", Collections.singletonList(duplicateValue));
+        }});
+        EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+
+        assertEquals(2, result.getTags().length);
+        assertEquals(DC_TERMS_MEDIUM, result.getTags()[0]);
+        assertEquals(duplicateValue, result.getTags()[1]);
     }
 
     @Test
@@ -225,8 +238,9 @@ public class RecordToEmbedRecordProcessorTest {
 
         EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
         assertEquals(2, result.getTimes().length);
-        assertEquals(TIMESPAN2_PREFLABEL_EN, result.getTimes()[0]);
-        assertEquals("1891", result.getTimes()[1]);
+        assertEquals("1891", result.getTimes()[0]);
+        assertEquals(TIMESPAN2_PREFLABEL_EN, result.getTimes()[1]);
+
     }
 
    private Record createTestRecord() {
