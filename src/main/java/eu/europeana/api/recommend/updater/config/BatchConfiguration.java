@@ -171,9 +171,6 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
                 .reader(this.recordReader)
                 .processor(recordToEmbedRecordProcessor)
                 .writer(embeddingRecordWriter())
-                .faultTolerant()
-                .retryLimit(3)
-                .retry(WebClientRequestException.class)
                 .taskExecutor(taskExecutor)
                 .throttleLimit(MAX_THREADS)
                 .build();

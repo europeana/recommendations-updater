@@ -11,13 +11,16 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
 
 import javax.annotation.PostConstruct;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
@@ -25,6 +28,9 @@ import java.util.List;
 public class EmbedRecordToVectorProcessor implements ItemProcessor<List<EmbeddingRecord>, List<RecordVectors>> {
 
     private static final Logger LOG = LogManager.getLogger(EmbedRecordToVectorProcessor.class);
+
+    private static final int RETRIES = 3;
+    private static final int TIMEOUT = 90; // seconds
 
     private static final int MAX_RESPONSE_SIZE_MB = 10;
     private static final int BYTES_PER_MB = 1024 * 1024;
@@ -41,6 +47,8 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
     @PostConstruct
     private void initWebClient() {
         WebClient.Builder wcBuilder = WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(HttpClient.create()
+                                .responseTimeout(Duration.ofSeconds(TIMEOUT))))
                 .exchangeStrategies(ExchangeStrategies.builder()
                 .codecs(configurer -> configurer
                         .defaultCodecs()
@@ -73,26 +81,44 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
         });
     }
 
+    @Override
+    public List<RecordVectors> process(List<EmbeddingRecord> embeddingRecords) {
+        LOG.trace("Sending {} records to Embedding API...", embeddingRecords.size());
+        return retrySend(embeddingRecords, RETRIES);
+    }
+
+    private List<RecordVectors> retrySend(List<EmbeddingRecord> embeddingRecords, int maxTries) {
+        int nrTries = 1;
+        EmbeddingResponse response = null;
+        List<RecordVectors> result = null;
+
+        while (nrTries <= maxTries && response == null) {
+            Long start = System.currentTimeMillis();
+            try {
+                response = getVectors(embeddingRecords.toArray(new EmbeddingRecord[0])).block();
+                result = (response == null ? null : Arrays.asList(response.getData()));
+                LOG.trace("  Response = {}...", result);
+                if (result == null) {
+                    LOG.warn("No response from Embeddings API after {} ms!", System.currentTimeMillis() - start);
+                } else {
+                    LOG.debug("3. Generated {} vectors in {} ms", result.size(), System.currentTimeMillis() - start);
+                }
+            } catch (RuntimeException e) {
+                LOG.warn("Request to Embeddings API failed after {} ms! Retrying....",System.currentTimeMillis() - start, e);
+                if (nrTries == maxTries) {
+                    throw e; // rethrow so error is propagated
+                }
+            }
+            nrTries++;
+        }
+        return result;
+    }
+
     private Mono<EmbeddingResponse> getVectors(EmbeddingRecord[] embeddingRecords) {
         return webClient.post()
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .bodyValue(new EmbeddingRequestData(embeddingRecords))
                 .retrieve()
                 .bodyToMono(EmbeddingResponse.class);
-    }
-
-    @Override
-    public List<RecordVectors> process(List<EmbeddingRecord> embeddingRecords) {
-        Long start = System.currentTimeMillis();
-        LOG.trace("Sending {} records to Embedding API...", embeddingRecords.size());
-        EmbeddingResponse response = getVectors(embeddingRecords.toArray(new EmbeddingRecord[0])).block();
-        List<RecordVectors> result = (response == null ? null : Arrays.asList(response.getData()));
-        LOG.trace("  Response = {}...", result);
-        if (result != null) {
-            LOG.debug("3. Generated {} vectors in {} ms", result.size(), System.currentTimeMillis() - start);
-        } else {
-            LOG.warn("No response from Embeddings API!");
-        }
-        return result;
     }
 }
