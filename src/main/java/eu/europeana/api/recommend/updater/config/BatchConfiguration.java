@@ -7,7 +7,7 @@ import eu.europeana.api.recommend.updater.service.embeddings.EmbedRecordToVector
 import eu.europeana.api.recommend.updater.service.embeddings.EmbeddingRecordFileWriter;
 import eu.europeana.api.recommend.updater.service.embeddings.RecordVectorsFileWriter;
 import eu.europeana.api.recommend.updater.service.milvus.MilvusWriterService;
-import eu.europeana.api.recommend.updater.service.record.MongoDbCursorItemReader;
+import eu.europeana.api.recommend.updater.service.record.MongoDbItemReader;
 import eu.europeana.api.recommend.updater.service.record.RecordToEmbedRecordProcessor;
 import eu.europeana.api.recommend.updater.service.record.SolrSetReader;
 import org.apache.logging.log4j.LogManager;
@@ -26,6 +26,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 
 import javax.sql.DataSource;
 import java.util.Arrays;
@@ -55,7 +56,7 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
     private static final int MAX_THREADS = 50;
 
     private final UpdaterSettings settings;
-    private final MongoDbCursorItemReader recordReader;
+    private final MongoDbItemReader recordReader;
     private final JobBuilderFactory jobBuilderFactory;
     private final StepBuilderFactory stepBuilderFactory;
     private final TaskExecutor taskExecutor;
@@ -74,7 +75,7 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
                               JobBuilderFactory jobBuilderFactory,
                               StepBuilderFactory stepBuilderFactory,
                               SolrSetReader solrSetReader,
-                              MongoDbCursorItemReader recordReader,
+                              MongoDbItemReader recordReader,
                               RecordToEmbedRecordProcessor recordToEmbedRecordProcessor,
                               EmbedRecordToVectorProcessor embedRecordToVectorProcessor,
                               MilvusWriterService milvusWriterService) {
@@ -170,6 +171,9 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
                 .reader(this.recordReader)
                 .processor(recordToEmbedRecordProcessor)
                 .writer(embeddingRecordWriter())
+                .faultTolerant()
+                .retryLimit(3)
+                .retry(WebClientRequestException.class)
                 .taskExecutor(taskExecutor)
                 .throttleLimit(MAX_THREADS)
                 .build();

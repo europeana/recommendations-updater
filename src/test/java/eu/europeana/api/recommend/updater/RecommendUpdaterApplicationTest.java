@@ -1,9 +1,9 @@
 package eu.europeana.api.recommend.updater;
 
-import eu.europeana.api.recommend.updater.service.record.MongoRecordRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.BootstrapWith;
 
@@ -16,7 +16,7 @@ import org.springframework.test.context.BootstrapWith;
 class RecommendUpdaterApplicationTest {
 
     @MockBean
-    private MongoRecordRepository mongoRecordRepository;
+    private MongoTemplate mongoTemplate;
 
     @SuppressWarnings("squid:S2699") // we are aware that this test doesn't have any assertion
     @Test

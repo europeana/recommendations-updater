@@ -26,6 +26,7 @@ import java.util.List;
  * @author Patrick Ehlert
  */
 @Service
+@SuppressWarnings("fb-contrib:USFW_UNSYNCHRONIZED_SINGLETON_FIELD_WRITES")
 public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, JobExecutionListener {
 
     private static final Logger LOG = LogManager.getLogger(MilvusWriterService.class);
@@ -140,6 +141,7 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
     }
 
     @PreDestroy
+    @SuppressWarnings("fb-contrib:USFW_UNSYNCHRONIZED_SINGLETON_FIELD_WRITES")
     private void shutdown() {
         lmdbWriterService.shutdown();
         if (milvusClient != null) {

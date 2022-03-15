@@ -29,7 +29,7 @@ public class Record implements Serializable {
     private List<Timespan> timespans;
     private Date timestampUpdated;
 
-    public String getId() {
+    public String getMongoId() {
         return id.toString();
     }
 

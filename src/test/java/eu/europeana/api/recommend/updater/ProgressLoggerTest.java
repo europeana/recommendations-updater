@@ -44,8 +44,6 @@ public class ProgressLoggerTest {
 
         assertEquals(1, logCaptor.getInfoLogs().size());
         assertTrue(logCaptor.getInfoLogs().get(0).startsWith("Retrieved 4 items of 1000"));
-
-
     }
 
 }
