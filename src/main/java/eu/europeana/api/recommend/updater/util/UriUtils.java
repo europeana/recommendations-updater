@@ -292,7 +292,7 @@ public final class UriUtils {
     }
 
     static boolean isRelativeIRI(String iri) {
-        return iri.startsWith("#");
+        return (iri.startsWith("#") || iri.startsWith("/") || iri.startsWith("../") || iri.startsWith("./"));
     }
 }
 
