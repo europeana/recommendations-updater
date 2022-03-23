@@ -145,6 +145,7 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
     }
 
     @PreDestroy
+    @SuppressWarnings({"fb-contrib:USFW_UNSYNCHRONIZED_SINGLETON_FIELD_WRITES"})
     public void close() throws InterruptedException {
         shuttingDown = true;
         LOG.info("Waiting 20 seconds to shut down webclient...");

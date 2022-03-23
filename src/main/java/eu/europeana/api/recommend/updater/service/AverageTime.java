@@ -43,7 +43,7 @@ public class AverageTime {
                 msg = msg + " for " + operationName;
             }
             if (LOG.isDebugEnabled()) {
-                LOG.debug(msg + ": {}", ProgressLogger.getDurationText(Math.round(currentTotal * 1D / currentNrOperations)));
+                LOG.debug("{}: {}", msg, ProgressLogger.getDurationText(Math.round(currentTotal * 1D / currentNrOperations)));
             }
             // start new round of calculations
             this.currentNrOperations = 0;
