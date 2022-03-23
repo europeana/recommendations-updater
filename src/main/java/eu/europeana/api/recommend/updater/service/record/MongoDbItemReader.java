@@ -4,6 +4,7 @@ import eu.europeana.api.recommend.updater.config.JobCmdLineStarter;
 import eu.europeana.api.recommend.updater.config.JobData;
 import eu.europeana.api.recommend.updater.config.UpdaterSettings;
 import eu.europeana.api.recommend.updater.model.record.Record;
+import eu.europeana.api.recommend.updater.service.AverageTime;
 import eu.europeana.api.recommend.updater.service.ProgressLogger;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -50,6 +51,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
     // we add a time-based progresslogger here since this is the only component that is guaranteed to exist (others may
     // not depending on the configuration)
     private ProgressLogger progressLogger;
+    private AverageTime averageTime; // for debugging purposes
 
     /**
      * Create new ItemReader that reads records from MongoDb
@@ -59,6 +61,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
     public MongoDbItemReader(UpdaterSettings settings, MongoService mongoService) {
         this.settings = settings;
         this.mongoService = mongoService;
+        this.averageTime = new AverageTime(50, "reading from Mongo");
     }
 
     @Override
@@ -125,11 +128,19 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
         } else {
             result = mongoService.getAllRecordsPagedUpdatedAfter(setCursor.regex, fromDate, setCursor.lastRetrieved, settings.getBatchSize());
         }
+        if (result.isEmpty()) {
+            LOG.info("Finished with set {}, retrieved {} items", setCursor.setId, setCursor.itemsRead);
+        }
+        if (LOG.isDebugEnabled()) {
+            averageTime.addTiming(System.currentTimeMillis() - start);
+        }
         result = checkTimestamp(result); // probably not needed, but just in case
 
         // return result
         if (!result.isEmpty()) {
-            LOG.debug("1. Retrieved {} items from set {} in {} ms", result.size(), setCursor.setId, System.currentTimeMillis() - start);
+            if (LOG.isTraceEnabled()) {
+                LOG.trace("1. Retrieved {} items from set {} in {} ms", result.size(), setCursor.setId, System.currentTimeMillis() - start);
+            }
             setCursor.itemsRead = setCursor.itemsRead + result.size();
             setCursor.lastRetrieved = result.get(result.size() - 1).getMongoId();
             setsInProgress.add(setCursor); // put back in queue, still work to be done
@@ -137,7 +148,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
             return result;
         }
 
-        if (setsToDo.isEmpty()) {
+        if (setsToDo.isEmpty() && setsInProgress.isEmpty()) {
             LOG.info("Done reading all from Mongo!");
         }
         return null;
@@ -149,7 +160,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
             // create new work
             String newSet = setsToDo.poll();
             if (newSet == null) {
-                LOG.info("No more work");
+                LOG.info("No more work. Stopping thread");
                 return null;
             }
 
@@ -157,7 +168,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
             return new SetInProgress(newSet);
         }
 
-        LOG.debug("Continue with set {}, skip = {}", result.setId, result.itemsRead);
+        LOG.trace("Continue with set {}, skip = {}", result.setId, result.itemsRead);
         return result;
     }
 

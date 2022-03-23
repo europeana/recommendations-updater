@@ -20,7 +20,8 @@ public class ProgressLoggerTest {
     public void getDurationTextTest() {
         assertEquals("12 milliseconds", ProgressLogger.getDurationText(12));
         assertEquals("1012 milliseconds", ProgressLogger.getDurationText(1012));
-        assertEquals("2 seconds", ProgressLogger.getDurationText(2012));
+        assertEquals("2 seconds and 3 milliseconds", ProgressLogger.getDurationText(2003));
+        assertEquals("10 seconds", ProgressLogger.getDurationText(10012));
         int min = 60 * 1000;
         assertEquals("2 minutes and 3 seconds", ProgressLogger.getDurationText(2 * min + 3000));
         int hour = 60 * min;

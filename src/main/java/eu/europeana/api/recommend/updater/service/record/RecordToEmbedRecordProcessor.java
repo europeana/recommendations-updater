@@ -4,6 +4,7 @@ import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingRecord;
 import eu.europeana.api.recommend.updater.model.record.Entity;
 import eu.europeana.api.recommend.updater.model.record.Proxy;
 import eu.europeana.api.recommend.updater.model.record.Record;
+import eu.europeana.api.recommend.updater.service.AverageTime;
 import eu.europeana.api.recommend.updater.util.UriUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -26,6 +27,7 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
 
     private static final String ENGLISH = "en";
     private static final String DEF = "def";
+    private AverageTime averageTime = new AverageTime(50, "creating EmbedRecords"); // for debugging purposes
 
     @Override
     public List<EmbeddingRecord> process(final List<Record> records) {
@@ -85,7 +87,11 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
             LOG.trace("{}", embedRecord);
             result.add(embedRecord);
         }
-        LOG.debug("2. Generated {} EmbeddingRecords in {} ms", result.size(), System.currentTimeMillis() - start);
+        if (LOG.isDebugEnabled()) {
+            long duration = System.currentTimeMillis() - start;
+            averageTime.addTiming(duration);
+            LOG.trace("2. Generated {} EmbeddingRecords in {} ms", result.size(), duration);
+        }
         return result;
     }
 

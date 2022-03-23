@@ -4,6 +4,7 @@ import eu.europeana.api.recommend.updater.config.JobCmdLineStarter;
 import eu.europeana.api.recommend.updater.config.UpdaterSettings;
 import eu.europeana.api.recommend.updater.exception.MilvusStateException;
 import eu.europeana.api.recommend.updater.model.embeddings.RecordVectors;
+import eu.europeana.api.recommend.updater.service.AverageTime;
 import io.milvus.client.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -37,6 +38,8 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
     private final LmdbWriterService lmdbWriterService;
     private boolean isFullUpdate;
     private MilvusClient milvusClient;
+    private AverageTime averageTimeLMDB;  // for debugging purposes
+    private AverageTime averageTimeMilvus;  // for debugging purposes
 
     //private Set<String> partitionNames = new HashSet(); // to keep track which sets (partitions) are present in Milvus
 
@@ -44,6 +47,10 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
         this.settings = settings;
         this.collectionName = settings.getMilvusCollection();
         this.lmdbWriterService = lmdbWriterService;
+        if (LOG.isDebugEnabled()) {
+            this.averageTimeLMDB = new AverageTime(50, "writing to LMDB");
+            this.averageTimeMilvus = new AverageTime(50, "writing to Milvus");
+        }
     }
 
     /**
@@ -153,11 +160,12 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
 
     @Override
     public void write(List<? extends List<RecordVectors>> lists) {
-        long start = System.currentTimeMillis();
+
         String setName = null;
         List<Long> ids = new ArrayList<>();
         List<List<Float>> vectors = new ArrayList<>();
 
+        long start = System.currentTimeMillis();
         for (List<RecordVectors> list : lists) {
             for (RecordVectors recvec : list) {
 
@@ -180,11 +188,21 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
                 vectors.add(Arrays.asList(recvec.getEmbedding()));
             }
         }
+        if (LOG.isDebugEnabled()) {
+            long duration = System.currentTimeMillis() - start;
+            averageTimeLMDB.addTiming(duration);
+            LOG.trace("4a. Saved {} ids to LMDB in {} ms", ids.size(), duration);
+        }
 
+        start = System.currentTimeMillis();
         if (!ids.isEmpty()) {
             writeToMilvus(setName, ids, vectors);
         }
-        LOG.debug("4. Saved {} vectors in Milvus in {} ms", ids.size(), System.currentTimeMillis() - start);
+        if (LOG.isDebugEnabled()) {
+            long duration = System.currentTimeMillis() - start;
+            averageTimeMilvus.addTiming(duration);
+            LOG.trace("4b. Saved {} vectors in Milvus in {} ms", ids.size(), duration);
+        }
 
     }
 

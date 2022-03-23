@@ -76,8 +76,10 @@ public class ProgressLogger {
             result = String.format("%d hours and %d minutes", d.toHoursPart(), d.toMinutesPart());
         } else if (d.toMinutesPart() >= 1) {
             result = String.format("%d minutes and %d seconds", d.toMinutesPart(), d.toSecondsPart());
-        } else if (d.getSeconds() >= 2) {
+        } else if (d.getSeconds() >= 10) {
             result = String.format("%d seconds", d.toSeconds());
+        } else if (d.getSeconds() >= 2){
+            result = String.format("%d seconds and %d milliseconds", d.toSecondsPart(), d.toMillisPart());
         } else {
             result = String.format("%d milliseconds", d.toMillis());
         }

@@ -6,6 +6,7 @@ import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingRecord;
 import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingRequestData;
 import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingResponse;
 import eu.europeana.api.recommend.updater.model.embeddings.RecordVectors;
+import eu.europeana.api.recommend.updater.service.AverageTime;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.batch.item.ItemProcessor;
@@ -20,17 +21,24 @@ import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Send EmbedRecord objects to the Embeddings API. The Embeddings API returns vectors that can be saved in Milvus
+ *
+ * @author Patrick Ehlert
+ */
 @Component
 public class EmbedRecordToVectorProcessor implements ItemProcessor<List<EmbeddingRecord>, List<RecordVectors>> {
 
     private static final Logger LOG = LogManager.getLogger(EmbedRecordToVectorProcessor.class);
 
     private static final int RETRIES = 3;
-    private static final int TIMEOUT = 90; // seconds
+    private static final int TIMEOUT = 70; // in seconds
+    // note that the current implementation of Embeddings API may terminate connections after 50 seconds
 
     private static final int MAX_RESPONSE_SIZE_MB = 10;
     private static final int BYTES_PER_MB = 1024 * 1024;
@@ -38,10 +46,15 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
     private final UpdaterSettings settings;
     private final BuildInfo buildInfo;
     private WebClient webClient;
+    private boolean shuttingDown = false;
+    private AverageTime averageTime; // for debugging purposesake?
 
     public EmbedRecordToVectorProcessor(UpdaterSettings settings, BuildInfo buildInfo) {
         this.settings = settings;
         this.buildInfo = buildInfo;
+        if (LOG.isDebugEnabled()) {
+            this.averageTime = new AverageTime(50, "sending/receiving from Embeddings API");
+        }
     }
 
     @PostConstruct
@@ -73,21 +86,19 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
 
     private ExchangeFilterFunction logResponse() {
         return ExchangeFilterFunction.ofResponseProcessor(response -> {
-            if (LOG.isDebugEnabled()) {
-                LOG.trace("Response: {} {}", response.statusCode().value(), response.statusCode().getReasonPhrase());
-            }
+            LOG.trace("Response: {} {}", response.statusCode().value(), response.statusCode().getReasonPhrase());
             return Mono.just(response);
 
         });
     }
 
     @Override
-    public List<RecordVectors> process(List<EmbeddingRecord> embeddingRecords) {
+    public List<RecordVectors> process(List<EmbeddingRecord> embeddingRecords) throws InterruptedException {
         LOG.trace("Sending {} records to Embedding API...", embeddingRecords.size());
         return retrySend(embeddingRecords, RETRIES);
     }
 
-    private List<RecordVectors> retrySend(List<EmbeddingRecord> embeddingRecords, int maxTries) {
+    private List<RecordVectors> retrySend(List<EmbeddingRecord> embeddingRecords, int maxTries) throws InterruptedException {
         int nrTries = 1;
         EmbeddingResponse response = null;
         List<RecordVectors> result = null;
@@ -96,17 +107,28 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
             Long start = System.currentTimeMillis();
             try {
                 response = getVectors(embeddingRecords.toArray(new EmbeddingRecord[0])).block();
+                long duration = System.currentTimeMillis() - start;
+                if (LOG.isDebugEnabled()) {
+                    averageTime.addTiming(duration);
+                }
+
                 result = (response == null ? null : Arrays.asList(response.getData()));
                 LOG.trace("  Response = {}...", result);
                 if (result == null) {
-                    LOG.warn("No response from Embeddings API after {} ms!", System.currentTimeMillis() - start);
+                    LOG.warn("No response from Embeddings API after {} ms!", duration);
                 } else {
-                    LOG.debug("3. Generated {} vectors in {} ms", result.size(), System.currentTimeMillis() - start);
+                    LOG.trace("3. Generated {} vectors in {} ms", result.size(), duration);
                 }
             } catch (RuntimeException e) {
-                LOG.warn("Request to Embeddings API failed after {} ms! Retrying....",System.currentTimeMillis() - start, e);
-                if (nrTries == maxTries) {
+                String setName =  embeddingRecords.get(0).getId().split("/")[1];
+                LOG.warn("Request to Embeddings API for set {} failed after {} ms with error {} and cause {}. Attempt {}, retrying....",
+                        setName, System.currentTimeMillis() - start, e.getMessage(), e.getCause(), nrTries);
+                if (shuttingDown || nrTries == maxTries) {
                     throw e; // rethrow so error is propagated
+                } else {
+                    int sleepTime = 30_000 * nrTries;
+                    LOG.warn("Holding off thread for set {} for {} seconds", setName, sleepTime/1000);
+                    Thread.sleep(sleepTime); // wait some extra time before we try again
                 }
             }
             nrTries++;
@@ -120,5 +142,13 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
                 .bodyValue(new EmbeddingRequestData(embeddingRecords))
                 .retrieve()
                 .bodyToMono(EmbeddingResponse.class);
+    }
+
+    @PreDestroy
+    public void close() throws InterruptedException {
+        shuttingDown = true;
+        LOG.info("Waiting 20 seconds to shut down webclient...");
+        Thread.sleep(20_000); // allow connections to finish to prevent issues with Embeddings API failing
+        LOG.info("Webclient closed.");
     }
 }
