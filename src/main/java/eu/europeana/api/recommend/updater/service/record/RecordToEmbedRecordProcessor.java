@@ -43,7 +43,7 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
             entities.addAll(createEntityList(rec.getPlaces()));
             entities.addAll(createEntityList(rec.getTimespans()));
 
-            String id = rec.getAbout();
+            String id = rec.getAboutWithoutLeadingSlash();
             Collection<String> title = new ArrayList<>();
             Collection<String> description = new ArrayList<>();
             Collection<String> creator = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);

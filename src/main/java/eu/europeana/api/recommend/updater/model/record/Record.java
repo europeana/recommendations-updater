@@ -37,6 +37,14 @@ public class Record implements Serializable {
         return about;
     }
 
+    /**
+     * In Milvus and LMDB the leading slash of a record's about field is not stored
+     * @return record about field without leading slash
+     */
+    public String getAboutWithoutLeadingSlash() {
+        return about.substring(1);
+    }
+
     public void setAbout(String about) {
         this.about = about;
     }

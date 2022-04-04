@@ -3,6 +3,7 @@ package eu.europeana.api.recommend.updater.service.milvus;
 
 import eu.europeana.api.recommend.updater.config.UpdaterSettings;
 import eu.europeana.api.recommend.updater.exception.LmdbStateException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Service;
@@ -34,9 +35,12 @@ public class LmdbWriterService {
 
     private Lmdb id2keyDb;
     private Lmdb key2idDb;
-    private final Object idLock = new Object(); // lock to prevent concurrency issues
-    private long count = -1L; // saved as recordId number to lmdb
+    private IdGenerator idGenerator;
 
+    /**
+     * Create new service for writing data to Lmdb
+     * @param settings auto-wired updater settings
+     */
     public LmdbWriterService(UpdaterSettings settings) {
         this.settings = settings;
     }
@@ -57,12 +61,11 @@ public class LmdbWriterService {
         String rootFolder = settings.getLmdbFolder();
 
         this.id2keyDb = new Lmdb(new File(rootFolder + milvusCollection + ID2KEY), false);
-        // TODO figure out if in recommendation engine a table name is set or not?
-        id2keyDb.connect(milvusCollection + ID2KEY);
+        id2keyDb.connect(null, isDeleteDb); // connect to/create unnamed database
         this.key2idDb = new Lmdb(new File(rootFolder + milvusCollection + KEY2ID), false);
-        id2keyDb.connect(milvusCollection + ID2KEY);
+        key2idDb.connect(null, isDeleteDb); // connect to/create unnamed database
 
-        count = id2keyDb.getItemCount();
+        long count = id2keyDb.getItemCount();
         if (count != key2idDb.getItemCount()) {
             throw new LmdbStateException("Aborting update because the 2 lmdb tables are not equal in size");
         }
@@ -75,30 +78,69 @@ public class LmdbWriterService {
         }
 
         LOG.info("Lmdb database contains {} entries (per table)", count);
+
+        if (count == 0) {
+            idGenerator = new IdGenerator(-1); // we start
+        } else {
+            // verify if id2keyDb indeed has expected last known used id
+            String shouldBePresent = id2keyDb.readString(String.valueOf(count - 1));
+            if (StringUtils.isBlank(shouldBePresent)) {
+                throw new LmdbStateException("Aborting update because last known value is empty or null (Key " +
+                        (count - 1) + " has value "+ shouldBePresent);
+            }
+            // and verify that next value does not yet exist
+            String shouldBeNull = id2keyDb.readString(String.valueOf(count));
+            if (shouldBeNull != null) {
+                throw new LmdbStateException("Aborting update because value after last known value should not be present (Key " +
+                        (count) + " has value "+ shouldBeNull);
+            }
+            idGenerator = new IdGenerator(count - 1);
+        }
+
         return count;
     }
 
 
-    public long writeId(String key) {
-        if (count == -1L || key2idDb == null || id2keyDb == null) {
+    /**
+     * Generate a new id and write the key to the 2 databases
+     * @param key String containing recordId
+     * @return the generated id as long
+     */
+    public Long writeId(String key) {
+        if (idGenerator == null || key2idDb == null || id2keyDb == null) {
             throw new IllegalStateException("Run init method before doing a write!");
         }
-        Long newId;
-        synchronized (idLock) {
-            count++;
-            newId = count;
-        }
 
-        // TODO try if writing in bulk is faster or not
-        id2keyDb.write(newId, key);
-        key2idDb.write(key, newId);
+        // TODO try if writing in bulk (in 1 transaction) is faster or not
+        Long newId = idGenerator.getNewId();
+        String newIdStr = String.valueOf(newId);
+        id2keyDb.write(newIdStr, key);
+        key2idDb.write(key, newIdStr);
         return newId;
     }
 
+    /**
+     * Close the lmdb databases
+     */
     @PreDestroy
     public void shutdown() {
         id2keyDb.close();
         key2idDb.close();
+    }
+
+    private static final class IdGenerator {
+
+        private long id;
+
+        public IdGenerator(long lastKnownId) {
+            id = lastKnownId;
+        }
+
+        public synchronized Long getNewId() {
+            id++;
+            return id;
+        }
+
     }
 
 }

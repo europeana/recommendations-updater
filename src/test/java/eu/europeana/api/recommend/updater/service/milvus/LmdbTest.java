@@ -17,7 +17,7 @@ public class LmdbTest {
 
     private static final Logger LOG = LogManager.getLogger(LmdbTest.class);
 
-    private static final String DB_NAME = null; // we can use unnamed (null) or named databases
+    private static final String DB_NAME = null; // we use unnamed databases (null) for most or our tests
 
     private static File tempDb;
     private static Lmdb lmdb;
@@ -93,6 +93,16 @@ public class LmdbTest {
     }
 
     @Test
+    public void tesReadWriteStrings() {
+        String key = "9999";
+        String value = "//datasetId/recordId";
+
+        this.lmdb.write(key, value);
+        String readValue = this.lmdb.readString(key);
+        assertEquals(value, readValue);
+    }
+
+    @Test
     public void testItemCount() {
         assertEquals(0, this.lmdb.getItemCount());
         this.lmdb.write("test", 1L);
@@ -131,4 +141,17 @@ public class LmdbTest {
         assertNull(this.lmdb.readString(1_000_000L));
     }
 
+    @Test
+    public void testNamedDatabase() {
+        Lmdb lmdb = new Lmdb(tempDb, false);
+        lmdb.connect("database1");
+        assertTrue(lmdb.isConnected("database1"));
+        assertFalse(lmdb.isConnected(null));
+        lmdb.close();
+
+        lmdb.connect("database2");
+        assertEquals(2, lmdb.getDatabases().size());
+        assertFalse(lmdb.isConnected("database1"));
+        lmdb.close();
+    }
 }

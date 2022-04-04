@@ -40,8 +40,8 @@ public class Lmdb {
 
     private static final Logger LOG = LogManager.getLogger(Lmdb.class);
 
-    private File dbFolder;
-    private boolean readOnly;
+    private final File dbFolder;
+    private final boolean readOnly;
     private Env<ByteBuffer> env;
     private Dbi<ByteBuffer> dbi;
 
@@ -57,7 +57,7 @@ public class Lmdb {
 
     /**
      * Connect to an existing or new lmdb database
-     * @param dbName the database to which to connect, will be created if it doesn't exist.
+     * @param dbName the database to which to connect, will be created if it doesn't exist. Use null for unnamed database
      * @return true if connection was setup successful, otherwise false
      */
     public boolean connect(String dbName){
@@ -66,7 +66,7 @@ public class Lmdb {
 
     /**
      * Connect to an existing or new lmdb database
-     * @param dbName the database to which to connect, will be created if it doesn't exist.
+     * @param dbName the database to which to connect, will be created if it doesn't exist. Use null for unnamed database
      * @param deleteExistingDbs deletes the database file entirely before connecting
      * @return true if connection was setup successful, otherwise false
      */
@@ -74,7 +74,7 @@ public class Lmdb {
         checkDbFileExistsOrInit(new File (this.dbFolder, FILE_NAME), deleteExistingDbs);
 
         LOG.info("Connecting to lmdb in folder {}...", this.dbFolder.getName());
-        Env.Builder builder = Env.create()
+        Env.Builder<ByteBuffer> builder = Env.create()
                     .setMapSize(MAX_DB_SIZE)
                     .setMaxDbs(1);
         if (readOnly) {
@@ -82,11 +82,17 @@ public class Lmdb {
         } else {
             this.env = builder.open(this.dbFolder);
         }
-        List<String> databases = this.getDatabases();
-        LOG.info("Found databases {}", databases);
+        if (dbName != null) {
+            List<String> databases = this.getDatabases();
+            LOG.info("Found databases {}", databases);
+        }
 
         this.dbi = env.openDbi(dbName, DbiFlags.MDB_CREATE);
-        LOG.info("Connected to database {}", dbName);
+        if (dbName != null) {
+            LOG.info("Connected to database {}", dbName);
+        } else {
+            LOG.info("Connected to unnamed database");
+        }
         return isConnected(dbName);
     }
 
@@ -116,7 +122,7 @@ public class Lmdb {
      */
     public boolean isConnected(String dbName) {
         if (dbName == null) {
-            return dbi != null;
+            return dbi != null && dbi.getName() == null;
         }
         return dbi != null && new String(dbi.getName(), CHARSET).equals(dbName);
     }
@@ -176,6 +182,19 @@ public class Lmdb {
      * @param key key to read
      * @return read value as String
      */
+    public String readString(String key) {
+        try (Txn<ByteBuffer> txn = this.env.txnRead()) {
+            final ByteBuffer keyBuffer = stringToByteBuffer(key);
+            final ByteBuffer valueBuffer = this.dbi.get(txn, keyBuffer);
+            return byteBufferToString(valueBuffer);
+        }
+    }
+
+    /**
+     * Retrieve a String value from the database
+     * @param key key to read
+     * @return read value as String
+     */
     public String readString(Long key) {
         try (Txn<ByteBuffer> txn = this.env.txnRead()) {
             final ByteBuffer keyBuffer = longToByteBuffer(key);
@@ -195,6 +214,16 @@ public class Lmdb {
             final ByteBuffer valueBuffer = this.dbi.get(txn, keyBuffer);
             return byteBufferToLong(valueBuffer);
         }
+    }
+
+    /**
+     * Write a String key and String value to the database. Strings longer than 511 bytes are truncated
+     * The write is done as a single transaction.
+     * @param key the key to write
+     * @param value the value to write
+     */
+    public void write(String key, String value) {
+        this.dbi.put(Lmdb.stringToByteBuffer(key), Lmdb.stringToByteBuffer(value));
     }
 
     /**

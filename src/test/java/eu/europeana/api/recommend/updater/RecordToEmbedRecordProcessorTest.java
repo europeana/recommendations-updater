@@ -44,7 +44,7 @@ public class RecordToEmbedRecordProcessorTest {
         record.setProxies(Collections.singletonList(new Proxy()));
         EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
 
-        assertEquals(ABOUT, result.getId());
+        assertEquals(ABOUT.substring(1), result.getId());
     }
 
     @Test
