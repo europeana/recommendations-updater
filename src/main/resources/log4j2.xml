@@ -19,6 +19,7 @@
 
         <Logger name="eu.europeana.api.recommend.updater.config.JobCmdLineStarter" level="DEBUG"/>
 
+        <!-- Set to DEBUG to see all sets and the number of items they contain -->
         <Logger name="eu.europeana.api.recommend.updater.service.record.SolrSetReader" level="INFO"/>
 
         <!-- Set to DEBUG to see all requests to Mongo -->

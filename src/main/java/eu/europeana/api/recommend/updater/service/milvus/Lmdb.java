@@ -18,7 +18,8 @@ import java.util.List;
 
 /**
  * Wrapper around Lmdb API so we can more easily use it for our purposes
- * Most functionality based on tutorial at https://github.com/lmdbjava/lmdbjava/blob/master/src/test/java/org/lmdbjava/TutorialTest.java
+ * Code inspired by tutorial at https://github.com/lmdbjava/lmdbjava/blob/master/src/test/java/org/lmdbjava/TutorialTest.java
+ * and Recommendation engine usage https://bitbucket.org/jhn-ngo/recsy-xx/src/master/src/recommenders/europeana/indexers/milvus_indexer.py
  *
  * @author Patrick Ehlert
  */

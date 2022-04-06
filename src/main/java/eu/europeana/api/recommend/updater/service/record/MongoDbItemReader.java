@@ -15,10 +15,7 @@ import org.springframework.batch.item.support.AbstractItemCountingItemStreamItem
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
@@ -128,30 +125,31 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
         } else {
             result = mongoService.getAllRecordsPagedUpdatedAfter(setCursor.regex, fromDate, setCursor.lastRetrieved, settings.getBatchSize());
         }
-        if (result.isEmpty()) {
-            LOG.info("Finished with set {}, retrieved {} items", setCursor.setId, setCursor.itemsRead);
+        boolean setDone = result.isEmpty() || result.size() < settings.getBatchSize();
+
+        if (LOG.isTraceEnabled()) {
+            LOG.trace("1. Retrieved {} items from set {} in {} ms", result.size(), setCursor.setId, System.currentTimeMillis() - start);
         }
         if (LOG.isDebugEnabled()) {
             averageTime.addTiming(System.currentTimeMillis() - start);
         }
-        result = checkTimestamp(result); // probably not needed, but just in case
+        if (!isFullUpdate) {
+            result = checkTimestamp(result); // probably not needed, but just in case
+        }
 
         // return result
         if (!result.isEmpty()) {
-            if (LOG.isTraceEnabled()) {
-                LOG.trace("1. Retrieved {} items from set {} in {} ms", result.size(), setCursor.setId, System.currentTimeMillis() - start);
-            }
             setCursor.itemsRead = setCursor.itemsRead + result.size();
             setCursor.lastRetrieved = result.get(result.size() - 1).getMongoId();
-            setsInProgress.add(setCursor); // put back in queue, still work to be done
+            if (!setDone) {
+                setsInProgress.add(setCursor); // put back in queue, still work to be done
+            }
             progressLogger.logProgress(result.size());
-            return result;
         }
-
-        if (setsToDo.isEmpty() && setsInProgress.isEmpty()) {
-            LOG.info("Done reading all from Mongo!");
+        if (setDone) {
+            LOG.info("Finished with set {}, retrieved {} items", setCursor.setId, setCursor.itemsRead);
         }
-        return null;
+        return result;
     }
 
     private SetInProgress findWork() {
