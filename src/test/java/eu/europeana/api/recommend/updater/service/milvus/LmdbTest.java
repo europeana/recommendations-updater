@@ -10,6 +10,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -93,13 +94,31 @@ public class LmdbTest {
     }
 
     @Test
-    public void tesReadWriteStrings() {
+    public void testReadWriteStrings() {
         String key = "9999";
         String value = "//datasetId/recordId";
 
         this.lmdb.write(key, value);
         String readValue = this.lmdb.readString(key);
         assertEquals(value, readValue);
+    }
+
+    @Test
+    public void testReadWriteMultipleStrings() {
+        List<String> keys = List.of("a", "b", "c", "d");
+        List<String> ids  = List.of("1", "2", "3", "4");
+        this.lmdb.write(keys, ids);
+        assertEquals("1", this.lmdb.readString("a"));
+        assertEquals("2", this.lmdb.readString("b"));
+        assertEquals("3", this.lmdb.readString("c"));
+        assertEquals("4", this.lmdb.readString("d"));
+    }
+
+    @Test
+    public void testReadWriteMultipleStringsFail() {
+        List<String> keys = List.of("a", "b", "c", "d");
+        List<String> ids  = List.of("1", "2", "3", "4", "5");
+        assertThrows(IllegalArgumentException.class, () -> this.lmdb.write(keys, ids));
     }
 
     @Test

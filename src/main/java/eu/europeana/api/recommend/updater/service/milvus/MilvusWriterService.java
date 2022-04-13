@@ -4,7 +4,7 @@ import eu.europeana.api.recommend.updater.config.JobCmdLineStarter;
 import eu.europeana.api.recommend.updater.config.UpdaterSettings;
 import eu.europeana.api.recommend.updater.exception.MilvusStateException;
 import eu.europeana.api.recommend.updater.model.embeddings.RecordVectors;
-import eu.europeana.api.recommend.updater.service.AverageTime;
+import eu.europeana.api.recommend.updater.util.AverageTime;
 import io.milvus.client.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -162,32 +162,20 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
     public void write(List<? extends List<RecordVectors>> lists) {
 
         String setName = null;
-        List<Long> ids = new ArrayList<>();
+        List<String> recordIds = new ArrayList<>();
         List<List<Float>> vectors = new ArrayList<>();
 
         long start = System.currentTimeMillis();
+        // first gather all recordIds and corresponding vectors
         for (List<RecordVectors> list : lists) {
             for (RecordVectors recvec : list) {
-
-                long newId = lmdbWriterService.writeId(recvec.getId());
-//                String recordSetName = EuropeanaIdUtils.getSetName(recvec.getId());
-//                if (settings.useMilvusPartitions() && setName == null) {
-//                    setName = recordSetName;
-//                }
-//
-//                if (!setName.equalsIgnoreCase(recordSetName) && !ids.isEmpty()) {
-//                    // we're starting a new set, write previous set.
-//                    writeToMilvus(setName, ids, vectors);
-//                    LOG.debug("Finished writing set {}, starting set{}", setName, recordSetName);
-//                    setName = recordSetName;
-//                    ids = new ArrayList<>();
-//                    vectors = new ArrayList<>();
-//                }
-
-                ids.add(newId);
+                recordIds.add(recvec.getId());
                 vectors.add(Arrays.asList(recvec.getEmbedding()));
             }
         }
+        // write recordIds to lmdb (that generates the long ids for milvus)
+        List<Long> ids = lmdbWriterService.writeIds(recordIds);
+
         if (LOG.isDebugEnabled()) {
             long duration = System.currentTimeMillis() - start;
             averageTimeLMDB.addTiming(duration);
@@ -196,6 +184,13 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
 
         start = System.currentTimeMillis();
         if (!ids.isEmpty()) {
+
+            // TODO write using partitions?
+            //                String recordSetName = EuropeanaIdUtils.getSetName(recvec.getId());
+//                if (settings.useMilvusPartitions() && setName == null) {
+//                    setName = recordSetName;
+//                }
+
             writeToMilvus(setName, ids, vectors);
         }
         if (LOG.isDebugEnabled()) {

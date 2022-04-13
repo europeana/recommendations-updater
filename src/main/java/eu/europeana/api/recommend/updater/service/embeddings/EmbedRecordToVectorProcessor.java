@@ -6,7 +6,7 @@ import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingRecord;
 import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingRequestData;
 import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingResponse;
 import eu.europeana.api.recommend.updater.model.embeddings.RecordVectors;
-import eu.europeana.api.recommend.updater.service.AverageTime;
+import eu.europeana.api.recommend.updater.util.AverageTime;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.batch.item.ItemProcessor;

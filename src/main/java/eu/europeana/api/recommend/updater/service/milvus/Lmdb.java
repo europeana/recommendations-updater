@@ -228,6 +228,25 @@ public class Lmdb {
     }
 
     /**
+     * Write multiple String keys and values to the database.
+     * This method is faster than writing 1 key at a time because of transactions.
+     * @param keys the list of keys to write
+     * @param values the list of values to write (needs to be the same size as keys list)
+     */
+    public void write(List<String> keys, List<String> values) {
+        if (keys.size() != values.size()) {
+            throw new IllegalArgumentException("Keys list size is different than values list size (keys = "
+                    + keys.size() + ", values = " + values.size());
+        }
+        try (Txn<ByteBuffer> txn = this.env.txnWrite()) {
+            for (int i = 0; i < keys.size(); i++) {
+                dbi.put(txn, Lmdb.stringToByteBuffer(keys.get(i)), Lmdb.stringToByteBuffer(values.get(i)));
+            }
+            txn.commit();
+        }
+    }
+
+    /**
      * Write a Long key and String value to the database. Strings longer than 511 bytes are truncated
      * The write is done as a single transaction.
      * @param key the key to write

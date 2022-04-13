@@ -1,4 +1,4 @@
-package eu.europeana.api.recommend.updater.service;
+package eu.europeana.api.recommend.updater.util;
 
 
 import org.apache.commons.lang3.StringUtils;

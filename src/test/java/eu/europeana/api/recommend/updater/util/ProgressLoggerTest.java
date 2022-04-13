@@ -1,6 +1,5 @@
-package eu.europeana.api.recommend.updater;
+package eu.europeana.api.recommend.updater.util;
 
-import eu.europeana.api.recommend.updater.service.ProgressLogger;
 import nl.altindag.log.LogCaptor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

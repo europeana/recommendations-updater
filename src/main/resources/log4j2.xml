@@ -38,7 +38,7 @@
         <Logger name="eu.europeana.api.recommend.updater.service.milvus.MilvusWriterService" level="DEBUG"/>
 
         <!-- Required to see average time logs -->
-        <Logger name="eu.europeana.api.recommend.updater.service.AverageTime" level="DEBUG"/>
+        <Logger name="eu.europeana.api.recommend.updater.util.AverageTime" level="DEBUG"/>
 
     </Loggers>
 </Configuration>

@@ -4,7 +4,7 @@ import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingRecord;
 import eu.europeana.api.recommend.updater.model.record.Entity;
 import eu.europeana.api.recommend.updater.model.record.Proxy;
 import eu.europeana.api.recommend.updater.model.record.Record;
-import eu.europeana.api.recommend.updater.service.AverageTime;
+import eu.europeana.api.recommend.updater.util.AverageTime;
 import eu.europeana.api.recommend.updater.util.UriUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;

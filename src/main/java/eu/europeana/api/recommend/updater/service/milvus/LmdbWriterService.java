@@ -10,6 +10,9 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Service that creates new lmdb databases or appends to an existing ones.
@@ -102,21 +105,20 @@ public class LmdbWriterService {
 
 
     /**
-     * Generate a new id and write the key to the 2 databases
-     * @param key String containing recordId
-     * @return the generated id as long
+     * Generate multiple newIds for all provided keys and write them to the 2 databases
+     * @param keys list of RecordIds
+     * @return list of generated ids
      */
-    public Long writeId(String key) {
+    public List<Long> writeIds(List<String> keys) {
         if (idGenerator == null || key2idDb == null || id2keyDb == null) {
             throw new IllegalStateException("Run init method before doing a write!");
         }
 
-        // TODO try if writing in bulk (in 1 transaction) is faster or not
-        Long newId = idGenerator.getNewId();
-        String newIdStr = String.valueOf(newId);
-        id2keyDb.write(newIdStr, key);
-        key2idDb.write(key, newIdStr);
-        return newId;
+        List<Long> newIds = idGenerator.getNewIds(keys.size());
+        List<String> newIdsString = newIds.stream().map(Object::toString).collect(Collectors.toUnmodifiableList());
+        id2keyDb.write(newIdsString, keys);
+        key2idDb.write(keys, newIdsString);
+        return newIds;
     }
 
     /**
@@ -130,15 +132,27 @@ public class LmdbWriterService {
 
     private static final class IdGenerator {
 
-        private long id;
+        private final Object lock = new Object();
+        private Long id;
 
         public IdGenerator(long lastKnownId) {
             id = lastKnownId;
         }
 
-        public synchronized Long getNewId() {
-            id++;
-            return id;
+        /**
+         * Get a list of new ids.
+         * @param amount the number of ids requests
+         * @return a list of ids that can be used for writing to LMDB and Milvus
+         */
+        public List<Long> getNewIds(int amount) {
+            List<Long> result = new ArrayList<>(amount);
+            synchronized (lock) {
+                for (int i = 0; i < amount; i++) {
+                    id++;
+                    result.add(id);
+                }
+            }
+            return result;
         }
 
     }

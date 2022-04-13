@@ -1,4 +1,4 @@
-package eu.europeana.api.recommend.updater.service;
+package eu.europeana.api.recommend.updater.util;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
