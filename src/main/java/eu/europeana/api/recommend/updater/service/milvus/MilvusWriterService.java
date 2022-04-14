@@ -14,9 +14,7 @@ import org.springframework.batch.item.ItemWriter;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 /**
  * Service that sets up connection to Milvus and writes vectors to it.
@@ -41,7 +39,7 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
     private AverageTime averageTimeLMDB;  // for debugging purposes
     private AverageTime averageTimeMilvus;  // for debugging purposes
 
-    //private Set<String> partitionNames = new HashSet(); // to keep track which sets (partitions) are present in Milvus
+    private Set<String> partitionNames = null; // to keep track which sets (partitions) are present in Milvus
 
     public MilvusWriterService(UpdaterSettings settings, LmdbWriterService lmdbWriterService) {
         this.settings = settings;
@@ -78,6 +76,13 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
             List<String> collections = milvusClient.listCollections().getCollectionNames();
             LOG.info("Available collections are: {}", collections);
             checkMilvusCollectionsState(collections, count, isDeleteDb);
+
+            if (settings.useMilvusPartitions()) {
+                ListPartitionsResponse response = milvusClient.listPartitions(this.collectionName);
+                checkMilvusResponse(response.getResponse(), "Error listing partitions");
+                this.partitionNames = new HashSet(response.getPartitionList());
+                LOG.info("Found {} partitions", partitionNames.size());
+            }
         }
     }
 
@@ -119,10 +124,6 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
         if (!isFullUpdate && nrEntities == 0) {
             LOG.warn("Found empty milvus collection. Are you sure you want to do a partial update?");
         }
-
-        //if (settings.useMilvusPartitions()) {
-        //    this.partitionNames = new HashSet(milvusClient.listPartitions(collectionName).getPartitionList());
-        //}
     }
 
     private void createNewCollection(String collectionName) {
@@ -161,7 +162,7 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
     @Override
     public void write(List<? extends List<RecordVectors>> lists) {
 
-        String setName = null;
+        String setName = null; // only used when writing to partitions
         List<String> recordIds = new ArrayList<>();
         List<List<Float>> vectors = new ArrayList<>();
 
@@ -173,6 +174,7 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
                 vectors.add(Arrays.asList(recvec.getEmbedding()));
             }
         }
+
         // write recordIds to lmdb (that generates the long ids for milvus)
         List<Long> ids = lmdbWriterService.writeIds(recordIds);
 
@@ -184,19 +186,17 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
 
         start = System.currentTimeMillis();
         if (!ids.isEmpty()) {
-
-            // TODO write using partitions?
-            //                String recordSetName = EuropeanaIdUtils.getSetName(recvec.getId());
-//                if (settings.useMilvusPartitions() && setName == null) {
-//                    setName = recordSetName;
-//                }
-
+            // determine setname to use as milvus partition name
+            if (settings.useMilvusPartitions()) {
+                setName = recordIds.get(0).split("/")[0];
+                LOG.trace("Setname is {} ", setName);
+            }
             writeToMilvus(setName, ids, vectors);
         }
         if (LOG.isDebugEnabled()) {
             long duration = System.currentTimeMillis() - start;
             averageTimeMilvus.addTiming(duration);
-            LOG.trace("4b. Saved {} vectors in Milvus in {} ms", ids.size(), duration);
+            LOG.trace("4b. Saved {} vectors in Milvus partition {} in {} ms", ids.size(), setName, duration);
         }
 
     }
@@ -208,18 +208,22 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
             LOG.trace("Writing {} records for set {} to Milvus...", ids.size(), setName);
         }
 
-//        if (setName != null && !partitionNames.contains(setName)) {
-//            checkMilvusResponse(milvusClient.createPartition(collectionName, setName),
-//                    "Error creating new partition for set " + setName);
-//            partitionNames.add(setName);
-//        }
-
-        InsertParam insrt = new InsertParam.Builder(collectionName)
+        InsertParam.Builder insertBuilder = new InsertParam.Builder(collectionName)
                 .withVectorIds(ids)
-                .withFloatVectors(vectors)
-            //    .withPartitionTag(setName)
-                .build();
-        InsertResponse response = milvusClient.insert(insrt);
+                .withFloatVectors(vectors);
+
+        if (setName != null) {
+            // do we need to create a new partition first?
+            if (!partitionNames.contains(setName)) {
+                LOG.debug("Creating new milvus partition {}", setName);
+                checkMilvusResponse(milvusClient.createPartition(collectionName, setName),
+                        "Error creating new partition for set " + setName);
+                partitionNames.add(setName);
+            }
+            insertBuilder.withPartitionTag(setName);
+        }
+
+        InsertResponse response = milvusClient.insert(insertBuilder.build());
         if (!response.ok()) {
             throw new MilvusStateException("Error writing vectors to Milvus: " + response.getResponse().getMessage() +
                     "/nVectorIds = "+response.getVectorIds());

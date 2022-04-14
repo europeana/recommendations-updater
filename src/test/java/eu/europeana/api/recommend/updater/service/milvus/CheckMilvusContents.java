@@ -1,9 +1,6 @@
 package eu.europeana.api.recommend.updater.service.milvus;
 
-import io.milvus.client.ConnectParam;
-import io.milvus.client.GetEntityByIDResponse;
-import io.milvus.client.MilvusClient;
-import io.milvus.client.MilvusGrpcClient;
+import io.milvus.client.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Disabled;
@@ -24,9 +21,10 @@ public class CheckMilvusContents {
 
     private static final Logger LOG = LogManager.getLogger(CheckMilvusContents.class);
 
-    private static final String SERVER_URL = "rec-engine-test.eanadev.org";
-    private static final int SERVER_PORT = 19530;
-    private static final String COLLECTION = "smalltest";
+    private static final String SERVER_URL = "";
+    private static final int SERVER_PORT = 0;
+    private static final String COLLECTION = "smalltest_partitions";
+
 
     @Test
     public void testMilvus() {
@@ -45,12 +43,25 @@ public class CheckMilvusContents {
         long count = milvusClient.countEntities(COLLECTION).getCollectionEntityCount();
         LOG.info("Found {} entries", count);
 
-        LOG.info("Listing first 10 items");
+        LOG.info("Listing first 10 items...");
         List<Long> ids = List.of(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L);
         GetEntityByIDResponse response = milvusClient.getEntityByID(COLLECTION, ids);
         assertTrue(response.ok());
         for (int i = 0; i < 10; i++) {
             LOG.info("{} = {}", i, response.getFloatVectors().get(i));
+        }
+
+        LOG.info("Listing partitions for collection {}...", COLLECTION);
+        ListPartitionsResponse partitionsResponse = milvusClient.listPartitions(COLLECTION);
+        assertTrue(response.ok());
+        int i = 0;
+        for (String partition : partitionsResponse.getPartitionList()) {
+            LOG.info(partition);
+            i++;
+            if (i == 100) {
+                LOG.info("Only listing first 100 partitions");
+                break;
+            }
         }
 
     }
