@@ -126,8 +126,12 @@ public class LmdbWriterService {
      */
     @PreDestroy
     public void shutdown() {
-        id2keyDb.close();
-        key2idDb.close();
+        if (id2keyDb != null) {
+            id2keyDb.close();
+        }
+        if (key2idDb != null) {
+            key2idDb.close();
+        }
     }
 
     private static final class IdGenerator {

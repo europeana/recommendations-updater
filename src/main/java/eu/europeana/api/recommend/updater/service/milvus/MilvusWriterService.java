@@ -151,7 +151,9 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
     @PreDestroy
     @SuppressWarnings("fb-contrib:USFW_UNSYNCHRONIZED_SINGLETON_FIELD_WRITES")
     private void shutdown() {
-        lmdbWriterService.shutdown();
+        if (lmdbWriterService != null) {
+            lmdbWriterService.shutdown();
+        }
         if (milvusClient != null) {
             LOG.info("Closing connection to Milvus.");
             milvusClient.close();
