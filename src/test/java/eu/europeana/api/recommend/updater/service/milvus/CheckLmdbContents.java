@@ -26,7 +26,6 @@ public class CheckLmdbContents {
     private static final Logger LOG = LogManager.getLogger(CheckLmdbContents.class);
 
     // folder name containing the 2 recommendation lmdb databases, without the _id2key and _key2id suffix
-    //private static final String DB_FOLDER = "/home/patrick/europeana_prod_laser_300";
     private static final String DB_FOLDER = "./test";
     private static final String DB_NAME = null; // Pangeanic uses unnamed databases!
 

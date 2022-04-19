@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Not sure why, but using log4j2.xml file I was not able to suppress the milvus debugging logging
+         whereas this file does work to suppress that -->
+    <include resource="org/springframework/boot/logging/logback/base.xml" />
+    <Logger name="io.milvus.client.AbstractMilvusGrpcClient" level="WARN" />
+</configuration>
