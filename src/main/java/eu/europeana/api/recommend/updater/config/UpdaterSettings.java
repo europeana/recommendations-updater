@@ -29,8 +29,10 @@ public class UpdaterSettings {
     private Integer batchSize;
     @Value("${threads:}")
     private Integer threads;
-    @Value("${log.interval:300}")
-    private Integer logInterval;
+    @Value("${log.progress.interval:300}")
+    private Integer logProgressInterval;
+    @Value("${log.debug.timing.interval:200}")
+    private Integer logTimingInterval;
 
     @Value("${embeddings.api.url:}")
     private String embeddingsApiUrl;
@@ -60,7 +62,7 @@ public class UpdaterSettings {
         LOG.info("Configuration:");
         LOG.info("  Batch size = {}", getBatchSize());
         LOG.info("  Threads = {}", getThreads());
-        LOG.info("  Log interval = {} seconds", logInterval);
+        LOG.info("  Log interval = {} seconds", logProgressInterval);
         LOG.info("  Embeddings API = {}", embeddingsApiUrl);
         LOG.info("  Milvus {} at {}", milvusUrl, milvusCollection);
         LOG.info("    Milvus use partitions = {}", useMilvusPartitions);
@@ -100,8 +102,12 @@ public class UpdaterSettings {
         return threads;
     }
 
-    public Integer getLogInterval() {
-        return logInterval;
+    public Integer getLogProgressInterval() {
+        return logProgressInterval;
+    }
+
+    public Integer getLogTimingInterval() {
+        return logTimingInterval;
     }
 
     public String getEmbeddingsApiUrl() {
@@ -120,6 +126,10 @@ public class UpdaterSettings {
         return milvusCollection;
     }
 
+    /**
+     *
+     * @return if true then milvus should create a partition for each set
+     */
     public Boolean useMilvusPartitions() {
         return useMilvusPartitions;
     }

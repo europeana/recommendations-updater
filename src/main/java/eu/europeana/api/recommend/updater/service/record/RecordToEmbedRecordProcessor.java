@@ -1,5 +1,6 @@
 package eu.europeana.api.recommend.updater.service.record;
 
+import eu.europeana.api.recommend.updater.config.UpdaterSettings;
 import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingRecord;
 import eu.europeana.api.recommend.updater.model.record.Entity;
 import eu.europeana.api.recommend.updater.model.record.Proxy;
@@ -27,7 +28,13 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
 
     private static final String ENGLISH = "en";
     private static final String DEF = "def";
-    private AverageTime averageTime = new AverageTime(50, "creating EmbedRecords"); // for debugging purposes
+    private AverageTime averageTime;
+
+    public RecordToEmbedRecordProcessor(UpdaterSettings settings) {
+        if (settings != null) {
+            this.averageTime = new AverageTime(settings.getLogTimingInterval(), "creating EmbedRecords"); // for debugging purposes
+        }
+    }
 
     @Override
     public List<EmbeddingRecord> process(final List<Record> records) {

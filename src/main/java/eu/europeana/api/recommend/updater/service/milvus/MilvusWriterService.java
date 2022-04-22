@@ -46,8 +46,8 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
         this.collectionName = settings.getMilvusCollection();
         this.lmdbWriterService = lmdbWriterService;
         if (LOG.isDebugEnabled()) {
-            this.averageTimeLMDB = new AverageTime(50, "writing to LMDB");
-            this.averageTimeMilvus = new AverageTime(50, "writing to Milvus");
+            this.averageTimeLMDB = new AverageTime(settings.getLogTimingInterval(), "writing to LMDB");
+            this.averageTimeMilvus = new AverageTime(settings.getLogTimingInterval(), "writing to Milvus");
         }
     }
 

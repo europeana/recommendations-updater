@@ -1,9 +1,11 @@
 package eu.europeana.api.recommend.updater;
 
+import eu.europeana.api.recommend.updater.config.UpdaterSettings;
 import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingRecord;
 import eu.europeana.api.recommend.updater.model.record.*;
 import eu.europeana.api.recommend.updater.service.record.RecordToEmbedRecordProcessor;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.mock.mockito.MockBean;
 
 import java.util.*;
 
@@ -33,6 +35,9 @@ public class RecordToEmbedRecordProcessorTest {
     private static final String TIMESPAN2_ABOUT = "http://semium.org/time/AD2xxx";
     private static final String TIMESPAN2_PREFLABEL_EN = "Second millenium AD";
 
+    @MockBean
+    UpdaterSettings settings;
+
     /**
      * Test to see if there are nullpointers when certain information is not available
      * Assumption is that records have an id and at least 1 proxy
@@ -42,7 +47,7 @@ public class RecordToEmbedRecordProcessorTest {
         Record record = new Record();
         record.setAbout(ABOUT);
         record.setProxies(Collections.singletonList(new Proxy()));
-        EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+        EmbeddingRecord result = new RecordToEmbedRecordProcessor(settings).process(Collections.singletonList(record)).get(0);
 
         assertEquals(ABOUT.substring(1), result.getId());
     }
@@ -52,14 +57,14 @@ public class RecordToEmbedRecordProcessorTest {
         // test record by default has dcTitle and dcTermsAlternative, so we strip out one
         Record record = createTestRecord();
         record.getProxies().get(0).setDcTitle(null);
-        EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+        EmbeddingRecord result = new RecordToEmbedRecordProcessor(settings).process(Collections.singletonList(record)).get(0);
 
         assertEquals(1, result.getTitle().length);
         assertEquals(DC_TERMS_ALTERNATIVE, result.getTitle()[0]);
 
         record = createTestRecord();
         record.getProxies().get(0).setDctermsAlternative(null);
-        result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+        result = new RecordToEmbedRecordProcessor(settings).process(Collections.singletonList(record)).get(0);
 
         assertEquals(1, result.getTitle().length);
         assertEquals(DC_TITLE1, result.getTitle()[0]);
@@ -73,7 +78,7 @@ public class RecordToEmbedRecordProcessorTest {
             put("fr", Collections.singletonList(DC_TITLE2)); // if we have English then French is ignored
             put("def", Collections.singletonList(AGENT_ABOUT)); // uris should be ignored
         }});
-        EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+        EmbeddingRecord result = new RecordToEmbedRecordProcessor(settings).process(Collections.singletonList(record)).get(0);
 
         assertEquals(2, result.getTitle().length);
         assertEquals(DC_TITLE1, result.getTitle()[0]);
@@ -83,7 +88,7 @@ public class RecordToEmbedRecordProcessorTest {
         record.getProxies().get(0).setDcTitle(new HashMap<>() {{
             put("en", Arrays.asList(DC_TITLE1, DC_TITLE2));
         }});
-        result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+        result = new RecordToEmbedRecordProcessor(settings).process(Collections.singletonList(record)).get(0);
         assertEquals(3, result.getTitle().length);
         assertEquals(DC_TITLE1, result.getTitle()[0]);
         assertEquals(DC_TITLE2, result.getTitle()[1]);
@@ -93,7 +98,7 @@ public class RecordToEmbedRecordProcessorTest {
     @Test
     public void testDescription(){
         Record record = createTestRecord();
-        EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+        EmbeddingRecord result = new RecordToEmbedRecordProcessor(settings).process(Collections.singletonList(record)).get(0);
 
         // should not matter what language it is in, as long as there is a description
         record.getProxies().get(0).setDcDescription(new HashMap<>() {{
@@ -109,14 +114,14 @@ public class RecordToEmbedRecordProcessorTest {
         // test record by default has dcCreator and dcContributor, so we strip out one
         Record record = createTestRecord();
         record.getProxies().get(0).setDcContributor(null);
-        EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+        EmbeddingRecord result = new RecordToEmbedRecordProcessor(settings).process(Collections.singletonList(record)).get(0);
 
         assertEquals(1, result.getCreator().length);
         assertEquals(DC_CREATOR, result.getCreator()[0]);
 
         record = createTestRecord();
         record.getProxies().get(0).setDcCreator(null);
-        result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+        result = new RecordToEmbedRecordProcessor(settings).process(Collections.singletonList(record)).get(0);
 
         assertEquals(1, result.getCreator().length);
         assertEquals(DC_CONTRIBUTOR, result.getCreator()[0]);
@@ -129,7 +134,7 @@ public class RecordToEmbedRecordProcessorTest {
         record.getProxies().get(0).setDcSubject(new HashMap<>() {{
             put("def", Arrays.asList(AGENT_ABOUT, CONCEPT_ABOUT));
         }});
-        EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+        EmbeddingRecord result = new RecordToEmbedRecordProcessor(settings).process(Collections.singletonList(record)).get(0);
 
         assertEquals(3, result.getCreator().length);
         assertEquals(DC_CONTRIBUTOR, result.getCreator()[0]);
@@ -145,7 +150,7 @@ public class RecordToEmbedRecordProcessorTest {
             put("en", Collections.singletonList(DC_CREATOR));
             put("def", Arrays.asList(AGENT_ABOUT, CONCEPT_ABOUT));
         }});
-        EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+        EmbeddingRecord result = new RecordToEmbedRecordProcessor(settings).process(Collections.singletonList(record)).get(0);
 
         assertEquals(3, result.getCreator().length);
         assertEquals(DC_CONTRIBUTOR, result.getCreator()[0]);
@@ -157,7 +162,7 @@ public class RecordToEmbedRecordProcessorTest {
     @Test
     public void testTags() {
         Record record = createTestRecord();
-        EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+        EmbeddingRecord result = new RecordToEmbedRecordProcessor(settings).process(Collections.singletonList(record)).get(0);
 
         assertEquals(2, result.getTags().length);
         assertEquals(DC_TERMS_MEDIUM, result.getTags()[0]);
@@ -172,7 +177,7 @@ public class RecordToEmbedRecordProcessorTest {
         record.getProxies().get(0).setDcFormat(new HashMap<>() {{
             put("en", Collections.singletonList(duplicateValue));
         }});
-        EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+        EmbeddingRecord result = new RecordToEmbedRecordProcessor(settings).process(Collections.singletonList(record)).get(0);
 
         assertEquals(2, result.getTags().length);
         assertEquals(DC_TERMS_MEDIUM, result.getTags()[0]);
@@ -186,7 +191,7 @@ public class RecordToEmbedRecordProcessorTest {
             put("def", Arrays.asList(AGENT_ABOUT, CONCEPT_ABOUT)); // referred concepts should be included, other entities not
             put("en", Collections.singletonList(DC_SUBJECT));
         }});
-        EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+        EmbeddingRecord result = new RecordToEmbedRecordProcessor(settings).process(Collections.singletonList(record)).get(0);
 
         assertEquals(2, result.getTags().length);
         assertEquals(DC_TERMS_MEDIUM, result.getTags()[0]);
@@ -196,7 +201,7 @@ public class RecordToEmbedRecordProcessorTest {
     @Test
     public void testPlaces() {
         Record record = createTestRecord();
-        EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+        EmbeddingRecord result = new RecordToEmbedRecordProcessor(settings).process(Collections.singletonList(record)).get(0);
 
         assertEquals(1, result.getPlaces().length);
         assertEquals(DC_TERMS_SPATIAL, result.getPlaces()[0]);
@@ -205,7 +210,7 @@ public class RecordToEmbedRecordProcessorTest {
     @Test
     public void testTimesEmpty() {
         Record record = createTestRecord();
-        EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+        EmbeddingRecord result = new RecordToEmbedRecordProcessor(settings).process(Collections.singletonList(record)).get(0);
 
         // edmHasMet does not refer to any timespan
         assertEquals(0, result.getTimes().length);
@@ -215,7 +220,7 @@ public class RecordToEmbedRecordProcessorTest {
     public void testTimesLinkedTimespans() {
         Record record = createTestRecord();
         record.getProxies().get(0).getEdmHasMet().put("def", Arrays.asList(TIMESPAN1_ABOUT, TIMESPAN2_ABOUT, "http://notfound.com"));
-        EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+        EmbeddingRecord result = new RecordToEmbedRecordProcessor(settings).process(Collections.singletonList(record)).get(0);
 
         assertEquals(1, result.getTimes().length);
         assertEquals(TIMESPAN2_PREFLABEL_EN, result.getTimes()[0]);
@@ -236,7 +241,7 @@ public class RecordToEmbedRecordProcessorTest {
         }});
         record.setProxies(Arrays.asList(record.getProxies().get(0), proxy2, proxy3));
 
-        EmbeddingRecord result = new RecordToEmbedRecordProcessor().process(Collections.singletonList(record)).get(0);
+        EmbeddingRecord result = new RecordToEmbedRecordProcessor(settings).process(Collections.singletonList(record)).get(0);
         assertEquals(2, result.getTimes().length);
         assertEquals("1891", result.getTimes()[0]);
         assertEquals(TIMESPAN2_PREFLABEL_EN, result.getTimes()[1]);

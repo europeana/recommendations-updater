@@ -58,7 +58,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
     public MongoDbItemReader(UpdaterSettings settings, MongoService mongoService) {
         this.settings = settings;
         this.mongoService = mongoService;
-        this.averageTime = new AverageTime(50, "reading from Mongo");
+        this.averageTime = new AverageTime(settings.getLogTimingInterval(), "reading from Mongo");
     }
 
     @Override
@@ -87,7 +87,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
             totalItemsToRead = mongoService.countAllAboutRegex(setsRegex);
         }
         LOG.info("Total number of records to download {}", totalItemsToRead);
-        this.progressLogger = new ProgressLogger(totalItemsToRead, settings.getLogInterval());
+        this.progressLogger = new ProgressLogger(totalItemsToRead, settings.getLogProgressInterval());
     }
 
     @Override

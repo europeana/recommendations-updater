@@ -36,7 +36,7 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
 
     private static final Logger LOG = LogManager.getLogger(EmbedRecordToVectorProcessor.class);
 
-    private static final int RETRIES = 3;
+    private static final int RETRIES = 5;
     private static final int TIMEOUT = 70; // in seconds
     // note that the current implementation of Embeddings API may terminate connections after 50 seconds
 
@@ -53,7 +53,7 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
         this.settings = settings;
         this.buildInfo = buildInfo;
         if (LOG.isDebugEnabled()) {
-            this.averageTime = new AverageTime(50, "sending/receiving from Embeddings API");
+            this.averageTime = new AverageTime(settings.getLogTimingInterval(), "sending/receiving from Embeddings API");
         }
     }
 
