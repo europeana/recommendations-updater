@@ -37,6 +37,7 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
     private static final Logger LOG = LogManager.getLogger(EmbedRecordToVectorProcessor.class);
 
     private static final int RETRIES = 5;
+    private static final int RETRY_WAIT_TIME = 45; // in seconds
     private static final int TIMEOUT = 70; // in seconds
     // note that the current implementation of Embeddings API may terminate connections after 50 seconds
 
@@ -47,7 +48,7 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
     private final BuildInfo buildInfo;
     private WebClient webClient;
     private boolean shuttingDown = false;
-    private AverageTime averageTime; // for debugging purposesake?
+    private AverageTime averageTime; // for debugging purposes
 
     public EmbedRecordToVectorProcessor(UpdaterSettings settings, BuildInfo buildInfo) {
         this.settings = settings;
@@ -61,7 +62,8 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
     private void initWebClient() {
         WebClient.Builder wcBuilder = WebClient.builder()
                 .clientConnector(new ReactorClientHttpConnector(HttpClient.create()
-                                .responseTimeout(Duration.ofSeconds(TIMEOUT))))
+                        .compress(true)
+                        .responseTimeout(Duration.ofSeconds(TIMEOUT))))
                 .exchangeStrategies(ExchangeStrategies.builder()
                 .codecs(configurer -> configurer
                         .defaultCodecs()
@@ -120,18 +122,38 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
                     LOG.trace("3. Generated {} vectors in {} ms", result.size(), duration);
                 }
             } catch (RuntimeException e) {
-                String setName =  embeddingRecords.get(0).getId().split("/")[1];
+                String setName;
+                if (embeddingRecords.isEmpty()) {
+                    setName = "unknown - empty list of embeddings records!";
+                } else {
+                    setName = getSetName(embeddingRecords.get(0));
+                }
                 LOG.warn("Request to Embeddings API for set {} failed after {} ms with error {} and cause {}. Attempt {}, retrying....",
                         setName, System.currentTimeMillis() - start, e.getMessage(), e.getCause(), nrTries);
                 if (shuttingDown || nrTries == maxTries) {
                     throw e; // rethrow so error is propagated
                 } else {
-                    int sleepTime = 30_000 * nrTries;
+                    int sleepTime = RETRY_WAIT_TIME * 1000 * nrTries;
                     LOG.warn("Holding off thread for set {} for {} seconds", setName, sleepTime/1000);
                     Thread.sleep(sleepTime); // wait some extra time before we try again
                 }
             }
             nrTries++;
+        }
+        return result;
+    }
+
+    private String getSetName(EmbeddingRecord embeddingRecord) {
+        String result;
+        if (embeddingRecord == null) {
+            result = "unknown - provided record is null";
+        } else {
+            String[] parts = embeddingRecord.getId().split("/");
+            if (parts.length > 1) {
+                result = parts[1];
+            } else {
+                result = "unknown - id doesn't contain expected / character";
+            }
         }
         return result;
     }
