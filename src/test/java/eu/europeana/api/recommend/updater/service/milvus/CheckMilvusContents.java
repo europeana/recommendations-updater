@@ -23,11 +23,10 @@ public class CheckMilvusContents {
 
     private static final String SERVER_URL = "";
     private static final int SERVER_PORT = 0;
-    private static final String COLLECTION = "smalltest_partitions";
+    private static final String COLLECTION = "test";
 
 
-    @Test
-    public void testMilvus() {
+    private MilvusClient setup() {
         LOG.info("Setting up connection to Milvus at {}...", SERVER_URL);
         ConnectParam connectParam = new ConnectParam.Builder()
                 .withHost(SERVER_URL)
@@ -39,7 +38,12 @@ public class CheckMilvusContents {
         List<String> collections = milvusClient.listCollections().getCollectionNames();
         LOG.info("Available collections are: {}", collections);
         assertTrue(collections.contains(COLLECTION));
+        return milvusClient;
+    }
 
+    @Test
+    public void testMilvus() {
+        MilvusClient milvusClient = setup();
         long count = milvusClient.countEntities(COLLECTION).getCollectionEntityCount();
         LOG.info("Found {} entries", count);
 
@@ -64,6 +68,21 @@ public class CheckMilvusContents {
             }
         }
 
+    }
+
+    /**
+     * This test can be used to retrieve the vectors for one or more specific LMDB ids
+     */
+    @Test
+    public void testGetVectorForID() {
+        MilvusClient milvusClient = setup();
+        List<Long> lmdbIds = List.of(29086550L, 28764443L, 9913235L, 10224472L);
+        GetEntityByIDResponse response = milvusClient.getEntityByID(COLLECTION, lmdbIds);
+        assertTrue(response.ok());
+
+        for (int i = 0; i < lmdbIds.size(); i++) {
+            LOG.info("LmdbId = {} -> Vectors = {}", i, response.getFloatVectors().get(i));
+        }
     }
 
 }

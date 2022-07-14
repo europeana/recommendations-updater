@@ -56,14 +56,14 @@ public class CheckLmdbContents {
     @Test
     public void testKey2IdNamedDatabase() {
         File dbFile = new File(DB_FOLDER  + LmdbWriterService.ID2KEY);
-        Lmdb key2id = new Lmdb(dbFile, true);
-        assertTrue(key2id.connect(DB_NAME, false));
+        Lmdb id2key = new Lmdb(dbFile, true);
+        assertTrue(id2key.connect(DB_NAME, false));
 
-        long count = key2id.getItemCount();
+        long count = id2key.getItemCount();
         LOG.info("Database has {} items", count);
         assertNotEquals(0, count);
 
-        key2id.close();
+        id2key.close();
 
         // we open a new connection ourselves so we can iterate over the first 10 keys
         LOG.info("Reopening connection manually...");
@@ -86,6 +86,20 @@ public class CheckLmdbContents {
         }
         dbi.close();
         env.close();
+    }
+
+    /**
+     * This test can be used to retrieve the LMDB id for a particular record
+     */
+    @Test
+    public void testIdForRecord() {
+        File dbFile = new File(DB_FOLDER  + LmdbWriterService.KEY2ID);
+        Lmdb key2id = new Lmdb(dbFile, true);
+        assertTrue(key2id.connect(DB_NAME, false));
+
+        String recordId = "11651/_Botany_L_2812640";
+        String lmdbId = key2id.readString(recordId);
+        LOG.info("RecordId = /{} -> lmdb id = {}", recordId, lmdbId);
     }
 
 }
