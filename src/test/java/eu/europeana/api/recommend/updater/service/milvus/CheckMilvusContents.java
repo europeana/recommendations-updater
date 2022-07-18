@@ -44,20 +44,10 @@ public class CheckMilvusContents {
     @Test
     public void testMilvus() {
         MilvusClient milvusClient = setup();
-        long count = milvusClient.countEntities(COLLECTION).getCollectionEntityCount();
-        LOG.info("Found {} entries", count);
-
-        LOG.info("Listing first 10 items...");
-        List<Long> ids = List.of(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L);
-        GetEntityByIDResponse response = milvusClient.getEntityByID(COLLECTION, ids);
-        assertTrue(response.ok());
-        for (int i = 0; i < 10; i++) {
-            LOG.info("{} = {}", i, response.getFloatVectors().get(i));
-        }
 
         LOG.info("Listing partitions for collection {}...", COLLECTION);
         ListPartitionsResponse partitionsResponse = milvusClient.listPartitions(COLLECTION);
-        assertTrue(response.ok());
+        assertTrue(partitionsResponse.ok());
         int i = 0;
         for (String partition : partitionsResponse.getPartitionList()) {
             LOG.info(partition);
@@ -68,6 +58,16 @@ public class CheckMilvusContents {
             }
         }
 
+        long count = milvusClient.countEntities(COLLECTION).getCollectionEntityCount();
+        LOG.info("Found {} entries in collection {}", count, COLLECTION);
+
+        LOG.info("Listing first 10 items...");
+        List<Long> ids = List.of(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L);
+        GetEntityByIDResponse response = milvusClient.getEntityByID(COLLECTION, ids);
+        assertTrue(response.ok());
+        for (int j = 0; j < 10; j++) {
+            LOG.info("{} = {}", j, response.getFloatVectors().get(j));
+        }
     }
 
     /**
@@ -81,7 +81,7 @@ public class CheckMilvusContents {
         assertTrue(response.ok());
 
         for (int i = 0; i < lmdbIds.size(); i++) {
-            LOG.info("LmdbId = {} -> Vectors = {}", i, response.getFloatVectors().get(i));
+            LOG.info("LmdbId = {} -> Vectors = {}", lmdbIds.get(i), response.getFloatVectors().get(i));
         }
     }
 
