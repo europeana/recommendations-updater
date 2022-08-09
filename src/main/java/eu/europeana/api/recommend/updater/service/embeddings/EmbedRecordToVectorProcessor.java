@@ -36,10 +36,12 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
 
     private static final Logger LOG = LogManager.getLogger(EmbedRecordToVectorProcessor.class);
 
+    // on each retry it will add extra wait time, so with 5 retries with wait time 3 sec then the application
+    // will fail after 3 + 6 + 9 + 12 + 15 = 45 seconds
     private static final int RETRIES = 5;
-    private static final int RETRY_WAIT_TIME = 45; // in seconds
+    private static final int RETRY_WAIT_TIME = 3; // in seconds
+
     private static final int TIMEOUT = 70; // in seconds
-    // note that the current implementation of Embeddings API may terminate connections after 50 seconds
 
     private static final int MAX_RESPONSE_SIZE_MB = 10;
     private static final int BYTES_PER_MB = 1024 * 1024;
@@ -97,6 +99,10 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
     @Override
     public List<RecordVectors> process(List<EmbeddingRecord> embeddingRecords) throws InterruptedException {
         LOG.trace("Sending {} records to Embedding API...", embeddingRecords.size());
+// TMP log record data
+//        for (EmbeddingRecord er : embeddingRecords) {
+//            LOG.info("{},{},{},{},{},{},{}", er.getId(), er.getTitle(), er.getDescription(), er.getCreator(), er.getTags(), er.getPlaces(), er.getTimes());
+//        }
         return retrySend(embeddingRecords, RETRIES);
     }
 

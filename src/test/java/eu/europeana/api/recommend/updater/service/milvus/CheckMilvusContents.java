@@ -85,4 +85,21 @@ public class CheckMilvusContents {
         }
     }
 
+    /**
+     * Warning! Only activate and run this test if you want to delete a particular Milvus database
+     */
+//    @Test
+//    public void testDelete() {
+//        String collectionToDrop = "smalltest";
+//        MilvusClient milvusClient = setup();
+//        LOG.info("Dropping Milvus collection {}...", collectionToDrop);
+//        Response response = milvusClient.dropCollection(collectionToDrop);
+//        if (response.ok()) {
+//            LOG.info("Collection dropped ok");
+//        } else {
+//            LOG.error("Error dropping collection {}. Status is {}, message = {}", collectionToDrop, response.getStatus(),
+//                    response.getMessage());
+//        }
+//    }
+
 }
