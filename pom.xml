@@ -10,7 +10,7 @@
 
     <groupId>eu.europeana.api</groupId>
     <artifactId>recommendations-updater</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.1</version>
     <packaging>war</packaging>
 
     <name>Recommendation Engine Updater</name>
