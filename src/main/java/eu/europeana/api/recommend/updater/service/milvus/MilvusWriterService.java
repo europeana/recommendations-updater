@@ -128,7 +128,7 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
 
     private void createNewCollection(String collectionName) {
         // Method is copied from https://bitbucket.org/jhn-ngo/recsy-xx/src/master/src/engines/searchers/engine.py
-        CollectionMapping newCollection = new CollectionMapping.Builder(collectionName, 1024).build();
+        CollectionMapping newCollection = new CollectionMapping.Builder(collectionName, 300).build();
         checkMilvusResponse(milvusClient.createCollection(newCollection),
                 "Error creating collection");
 

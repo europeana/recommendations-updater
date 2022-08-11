@@ -1,6 +1,7 @@
 package eu.europeana.api.recommend.updater.config;
 
 import eu.europeana.api.recommend.updater.exception.ConfigurationException;
+import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingRequestData;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -64,6 +65,7 @@ public class UpdaterSettings {
         LOG.info("  Threads = {}", getThreads());
         LOG.info("  Log interval = {} seconds", logProgressInterval);
         LOG.info("  Embeddings API = {}", embeddingsApiUrl);
+        LOG.info("    Reduce = {}", EmbeddingRequestData.REDUCE);
         LOG.info("  Milvus {} at {}", milvusUrl, milvusCollection);
         LOG.info("    Milvus use partitions = {}", useMilvusPartitions);
         LOG.info("  LMDB folder = {}", lmdbFolder);

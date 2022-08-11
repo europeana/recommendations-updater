@@ -38,7 +38,7 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
 
     // on each retry it will add extra wait time, so with 5 retries with wait time 3 sec then the application
     // will fail after 3 + 6 + 9 + 12 + 15 = 45 seconds
-    private static final int RETRIES = 5;
+    private static final int RETRIES = 6;
     private static final int RETRY_WAIT_TIME = 3; // in seconds
 
     private static final int TIMEOUT = 70; // in seconds
@@ -172,12 +172,12 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
                 .bodyToMono(EmbeddingResponse.class);
     }
 
-    @PreDestroy
-    @SuppressWarnings({"fb-contrib:USFW_UNSYNCHRONIZED_SINGLETON_FIELD_WRITES"})
-    public void close() throws InterruptedException {
-        shuttingDown = true;
-        LOG.info("Waiting 20 seconds to shut down webclient...");
-        Thread.sleep(20_000); // allow connections to finish to prevent issues with Embeddings API failing
-        LOG.info("Webclient closed.");
-    }
+//    @PreDestroy
+//    @SuppressWarnings({"fb-contrib:USFW_UNSYNCHRONIZED_SINGLETON_FIELD_WRITES"})
+//    public void close() throws InterruptedException {
+//        shuttingDown = true;
+//        LOG.info("Waiting 20 seconds to shut down webclient...");
+//        Thread.sleep(20_000); // allow connections to finish to prevent issues with Embeddings API failing
+//        LOG.info("Webclient closed.");
+//    }
 }

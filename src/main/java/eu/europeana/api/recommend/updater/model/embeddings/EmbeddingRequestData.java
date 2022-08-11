@@ -5,6 +5,8 @@ import java.io.Serializable;
 @SuppressWarnings("java:S2384") // we'll ignore creating copies of field values to improve efficiency
 public class EmbeddingRequestData implements Serializable {
 
+    public static final int REDUCE = 1;
+
     private static final long serialVersionUID = 4063496522104140402L;
 
     private final EmbeddingRecord[] records;
@@ -18,11 +20,11 @@ public class EmbeddingRequestData implements Serializable {
     }
 
     /**
-     * If set to 1 then 300-dimensional vectors are returned, but we need the original laser embedding vectors with
-     * dimension 1024 so should be set to 0
+     * If set to 1 then 300-dimensional vectors are returned, otherwise 1000.
+     * We need vectors of size 300.
      */
     public int getReduce() {
-        return 0;
+        return REDUCE;
     }
 
 }
