@@ -111,6 +111,12 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
         EmbeddingResponse response = null;
         List<RecordVectors> result = null;
 
+        // Extra check because Embeddings API will fail if we sent 0 items to it.
+        if (embeddingRecords == null || embeddingRecords.isEmpty()) {
+            LOG.warn("No items to sent to Embeddings API");
+            return result;
+        }
+
         while (nrTries <= maxTries && response == null) {
             Long start = System.currentTimeMillis();
             try {

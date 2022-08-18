@@ -147,7 +147,17 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
             progressLogger.logProgress(result.size());
         }
         if (setDone) {
-            LOG.info("Finished with set {}, retrieved {} items", setCursor.setId, setCursor.itemsRead);
+            if (setCursor.itemsRead == 0) {
+                // Check if the set exists. It may have been deleted in the mean time, or the user provided an incorrect set name
+                long nrItemsInSet = mongoService.countAllAboutRegex("^/" + setCursor.setId + "/");
+                if (nrItemsInSet == 0) {
+                    LOG.warn("No items found for set {}!", setCursor.setId);
+                } else {
+                    LOG.error("No items read for set {}, but set has {} items!", setCursor.setId, nrItemsInSet);
+                }
+            } else {
+                LOG.info("Finished with set {}, retrieved {} items", setCursor.setId, setCursor.itemsRead);
+            }
         }
         return result;
     }
