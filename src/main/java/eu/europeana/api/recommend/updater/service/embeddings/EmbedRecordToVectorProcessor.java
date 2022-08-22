@@ -161,8 +161,8 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
             result = "unknown - provided record is null";
         } else {
             String[] parts = embeddingRecord.getId().split("/");
-            if (parts.length > 1) {
-                result = parts[1];
+            if (parts.length > 0) {
+                result = parts[0];
             } else {
                 result = "unknown - id doesn't contain expected / character";
             }
