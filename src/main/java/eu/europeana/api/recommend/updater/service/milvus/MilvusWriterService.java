@@ -178,7 +178,7 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
         }
 
         // Extra check to be sure we have content to write
-        if (!recordIds.isEmpty()) {
+        if (recordIds.isEmpty()) {
             LOG.warn("No records to write to Milvus");
             return;
         }

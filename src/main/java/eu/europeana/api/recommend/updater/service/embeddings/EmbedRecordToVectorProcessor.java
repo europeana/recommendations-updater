@@ -2,6 +2,7 @@ package eu.europeana.api.recommend.updater.service.embeddings;
 
 import eu.europeana.api.recommend.updater.config.BuildInfo;
 import eu.europeana.api.recommend.updater.config.UpdaterSettings;
+import eu.europeana.api.recommend.updater.exception.EmbeddingsException;
 import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingRecord;
 import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingRequestData;
 import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingResponse;
@@ -21,10 +22,11 @@ import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Send EmbedRecord objects to the Embeddings API. The Embeddings API returns vectors that can be saved in Milvus
@@ -36,19 +38,26 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
 
     private static final Logger LOG = LogManager.getLogger(EmbedRecordToVectorProcessor.class);
 
-    // on each retry it will add extra wait time, so with 5 retries with wait time 3 sec then the application
-    // will fail after 3 + 6 + 9 + 12 + 15 = 45 seconds
-    private static final int RETRIES = 6;
-    private static final int RETRY_WAIT_TIME = 3; // in seconds
+    // on each retry it will add extra wait time, so with 7 retries with wait time 2 sec then the application
+    // will fail after 2 + 4 + 6 + 8 + 10 + 12 + 14 = 56 seconds
+    private static final int RETRY_GET_CLIENT = 7;
+    private static final int RETRY_GET_CLIENT_WAIT_TIME = 2; // in seconds
+    // 4 retries, wait time 5 sec -> 5 + 10 + 15 + 20 = 50 seconds
+    private static final int RETRY_GET_VECTOR = 5;
+    private static final int RETRY_GET_VECTOR_WAIT_TIME = 5; // in seconds
 
-    private static final int TIMEOUT = 70; // in seconds
+    private static final long MS_PER_SEC = 1000;
+
+    private static final int TIMEOUT = 40; // in seconds
 
     private static final int MAX_RESPONSE_SIZE_MB = 10;
     private static final int BYTES_PER_MB = 1024 * 1024;
 
     private final UpdaterSettings settings;
     private final BuildInfo buildInfo;
-    private WebClient webClient;
+
+    private final Queue<WebClient> webClients = new ConcurrentLinkedQueue<>();
+
     private boolean shuttingDown = false;
     private AverageTime averageTime; // for debugging purposes
 
@@ -62,18 +71,39 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
 
     @PostConstruct
     private void initWebClient() {
+        // Check whether to use 1 Embeddings API address or multiple
+        // If multiple, we'll keep track of which one was used last so load balancing is improved
+        String[] embeddingsApis = settings.getEmbeddingsApiUrl().split(",");
+        if (embeddingsApis.length == 1) {
+            webClients.add(createWebClient(settings.getEmbeddingsApiUrl()));
+            LOG.info("Using 1 Embeddings API address at {}", webClients.peek());
+        } else {
+            LOG.info("Multiple Embeddings API addresses found");
+            for (String embeddingApi : embeddingsApis) {
+                String url = embeddingApi.trim();
+                LOG.info("  {}", url);
+                webClients.add(createWebClient(url));
+            }
+            // Also check if number of threads in config match the number of addresses
+            if (settings.getThreads() != embeddingsApis.length) {
+                LOG.warn("Found {} Embeddings API urls, but application is configured to use {} threads", embeddingsApis.length, settings.getBatchSize());
+            }
+        }
+    }
+
+    private WebClient createWebClient(String url) {
         WebClient.Builder wcBuilder = WebClient.builder()
                 .clientConnector(new ReactorClientHttpConnector(HttpClient.create()
                         .compress(true)
                         .responseTimeout(Duration.ofSeconds(TIMEOUT))))
                 .exchangeStrategies(ExchangeStrategies.builder()
-                .codecs(configurer -> configurer
-                        .defaultCodecs()
-                        .maxInMemorySize(MAX_RESPONSE_SIZE_MB * BYTES_PER_MB))
-                .build());
+                        .codecs(configurer -> configurer
+                                .defaultCodecs()
+                                .maxInMemorySize(MAX_RESPONSE_SIZE_MB * BYTES_PER_MB))
+                        .build());
 
-        this.webClient = wcBuilder
-                .baseUrl(settings.getEmbeddingsApiUrl())
+        return wcBuilder
+                .baseUrl(url)
                 .defaultHeader(HttpHeaders.USER_AGENT, buildInfo.getAppName() + " v" + buildInfo.getAppVersion())
                 .filter(logRequest())
                 .filter(logResponse())
@@ -97,16 +127,12 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
     }
 
     @Override
-    public List<RecordVectors> process(List<EmbeddingRecord> embeddingRecords) throws InterruptedException {
+    public List<RecordVectors> process(List<EmbeddingRecord> embeddingRecords) throws InterruptedException, EmbeddingsException {
         LOG.trace("Sending {} records to Embedding API...", embeddingRecords.size());
-// TMP log record data
-//        for (EmbeddingRecord er : embeddingRecords) {
-//            LOG.info("{},{},{},{},{},{},{}", er.getId(), er.getTitle(), er.getDescription(), er.getCreator(), er.getTags(), er.getPlaces(), er.getTimes());
-//        }
-        return retrySend(embeddingRecords, RETRIES);
+        return retrySend(embeddingRecords, RETRY_GET_VECTOR);
     }
 
-    private List<RecordVectors> retrySend(List<EmbeddingRecord> embeddingRecords, int maxTries) throws InterruptedException {
+    private List<RecordVectors> retrySend(List<EmbeddingRecord> embeddingRecords, int maxTries) throws InterruptedException, EmbeddingsException {
         int nrTries = 1;
         EmbeddingResponse response = null;
         List<RecordVectors> result = null;
@@ -145,9 +171,9 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
                 if (shuttingDown || nrTries == maxTries) {
                     throw e; // rethrow so error is propagated
                 } else {
-                    int sleepTime = RETRY_WAIT_TIME * 1000 * nrTries;
-                    LOG.warn("Holding off thread for set {} for {} seconds", setName, sleepTime/1000);
-                    Thread.sleep(sleepTime); // wait some extra time before we try again
+                    int sleepTime = RETRY_GET_VECTOR_WAIT_TIME * nrTries;
+                    LOG.warn("Holding off thread for set {} for {} seconds", setName, sleepTime);
+                    Thread.sleep(sleepTime * MS_PER_SEC); // wait some extra time before we try again
                 }
             }
             nrTries++;
@@ -170,20 +196,45 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
         return result;
     }
 
-    private Mono<EmbeddingResponse> getVectors(EmbeddingRecord[] embeddingRecords) {
-        return webClient.post()
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .bodyValue(new EmbeddingRequestData(embeddingRecords))
-                .retrieve()
-                .bodyToMono(EmbeddingResponse.class);
+    /**
+     * Check if there is a webclient that is not in use. If so we return that, else we wait until one is
+     * available
+     * @return
+     */
+    private synchronized WebClient getWebClientFromQueue(int maxTries) throws InterruptedException, EmbeddingsException {
+        int nrTries = 1;
+        WebClient result = null;
+
+        while (result == null && nrTries < maxTries){
+            result = webClients.poll();
+            if (result == null) {
+                int sleepTime = RETRY_GET_CLIENT_WAIT_TIME * nrTries;
+                LOG.warn("All Embeddings API instances are in use. Waiting {} sec ...", sleepTime);
+                Thread.sleep(sleepTime * MS_PER_SEC); // wait some extra time before we try again
+                nrTries++;
+            }
+        }
+
+        if (result == null) {
+            throw new EmbeddingsException("No Embeddings API address available. Giving up");
+        }
+        return result;
     }
 
-//    @PreDestroy
-//    @SuppressWarnings({"fb-contrib:USFW_UNSYNCHRONIZED_SINGLETON_FIELD_WRITES"})
-//    public void close() throws InterruptedException {
-//        shuttingDown = true;
-//        LOG.info("Waiting 20 seconds to shut down webclient...");
-//        Thread.sleep(20_000); // allow connections to finish to prevent issues with Embeddings API failing
-//        LOG.info("Webclient closed.");
-//    }
+    private Mono<EmbeddingResponse> getVectors(EmbeddingRecord[] embeddingRecords) throws InterruptedException, EmbeddingsException {
+        WebClient webClient = null;
+        try {
+            webClient = getWebClientFromQueue(RETRY_GET_CLIENT);
+            return webClient.post()
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .bodyValue(new EmbeddingRequestData(embeddingRecords))
+                    .retrieve()
+                    .bodyToMono(EmbeddingResponse.class);
+        } finally {
+            if (webClient != null) {
+                this.webClients.add(webClient); // put back in queue
+            }
+        }
+    }
+
 }
