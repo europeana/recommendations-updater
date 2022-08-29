@@ -3,6 +3,7 @@ package eu.europeana.api.recommend.updater.service.record;
 import eu.europeana.api.recommend.updater.config.JobCmdLineStarter;
 import eu.europeana.api.recommend.updater.config.JobData;
 import eu.europeana.api.recommend.updater.exception.SolrException;
+import eu.europeana.api.recommend.updater.util.SetUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.solr.client.solrj.SolrQuery;
@@ -102,7 +103,7 @@ public class SolrSetReader implements Tasklet, StepExecutionListener {
             for (FacetField.Count facetField : setsFacet.getValues()) {
                 // set names from solr are in the form of <setId>_<setName> so we split of the last part
                 // note that retrieved sets are automatically ordered by solr in size, largest first
-                String setId = datasetNameToId(facetField.getName());
+                String setId = SetUtils.datasetNameToId(facetField.getName());
                 LOG.debug("Found set {} with size {} -> id = {}", facetField.getName(), facetField.getCount(), setId);
                 result.add(setId);
             }
@@ -119,9 +120,7 @@ public class SolrSetReader implements Tasklet, StepExecutionListener {
         }
     }
 
-    private String datasetNameToId(String datasetName) {
-        return datasetName.replaceAll("(\\d+).+", "$1");
-    }
+
 
     /**
      * Save resuls to JobExecutionContext

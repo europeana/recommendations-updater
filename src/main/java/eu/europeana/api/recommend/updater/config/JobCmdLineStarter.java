@@ -1,6 +1,7 @@
 package eu.europeana.api.recommend.updater.config;
 
 import eu.europeana.api.recommend.updater.exception.ConfigurationException;
+import eu.europeana.api.recommend.updater.util.SetUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -13,6 +14,10 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Configuration;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -35,6 +40,7 @@ public class JobCmdLineStarter implements ApplicationRunner {
     public static final String PARAM_UPDATE_FULL = JobData.UPDATETYPE_VALUE_FULL.toUpperCase(Locale.ROOT);
     public static final String PARAM_UPDATE_FROM = JobData.FROM_KEY;
     public static final String PARAM_UPDATE_SETS = JobData.SETS_KEY;
+    public static final String PARAM_UPDATE_SETSFILE = JobData.SETSFILE_KEY;
     public static final String PARAM_DELETE_DB = JobData.DELETE_DB.toUpperCase(Locale.ROOT);
 
     private static final Logger LOG = LogManager.getLogger(JobCmdLineStarter.class);
@@ -42,8 +48,9 @@ public class JobCmdLineStarter implements ApplicationRunner {
     private static final String SET_SEPARATOR = ",";
 
     private static final String FULL_DESCRIPTION = "'--" + PARAM_UPDATE_FULL + "' parameter";
-    private static final String PARTIAL_DESCRIPTION = "'--" + PARAM_UPDATE_FROM + "=[yyyy-MM-ddThh:mm:ss]' parameter and date value";
-    private static final String SETS_DESCRIPTION = "'--" + PARAM_UPDATE_SETS + "=<setIds>' parameter and comma-separated set-id values";
+    private static final String PARTIAL_DESCRIPTION = "'--" + PARAM_UPDATE_FROM + "=[yyyy-MM-ddThh:mm:ss]' parameter with date value";
+    private static final String SETS_DESCRIPTION = "'--" + PARAM_UPDATE_SETS + "=<setIds>' parameter with comma-separated set-id values";
+    private static final String SETSFILE_DESCRIPTION = "'--" + PARAM_UPDATE_SETSFILE + "=<setFileName>' parameter";
 
     private final JobLauncher jobLauncher;
     private final Job job;
@@ -72,11 +79,20 @@ public class JobCmdLineStarter implements ApplicationRunner {
         } else if (args.getOptionNames().contains(PARAM_UPDATE_FROM)) {
             processPartialUpdate(args, jobParamBuilder);
         } else if (args.getOptionNames().contains(PARAM_UPDATE_SETS)) {
+            if (args.getOptionNames().contains(PARAM_UPDATE_SETSFILE)) {
+                throw new ConfigurationException("Either use --sets or --setFile option");
+            }
             processSets(args, jobParamBuilder);
+        } else if (args.getOptionNames().contains(PARAM_UPDATE_SETSFILE)) {
+            if (args.getOptionNames().contains(PARAM_UPDATE_SETS)) {
+                throw new ConfigurationException("Either use --sets or --setFile option");
+            }
+            processSetsFile(args, jobParamBuilder);
         } else {
             throw new ConfigurationException("Specify either command-line " + FULL_DESCRIPTION +
                     ", " + PARTIAL_DESCRIPTION +
-                    " or " + SETS_DESCRIPTION);
+                    ", " + SETS_DESCRIPTION +
+                    " or " + SETSFILE_DESCRIPTION);
         }
 
         if (args.getOptionNames().contains(PARAM_DELETE_DB)) {
@@ -131,6 +147,56 @@ public class JobCmdLineStarter implements ApplicationRunner {
         }
 
         jobParamBuilder.addString(JobData.SETS_KEY, ids);
+    }
+
+    private void processSetsFile(ApplicationArguments args, JobParametersBuilder jobParamBuilder) throws ConfigurationException {
+        jobParamBuilder.addString(JobData.UPDATETYPE_KEY, JobData.UPDATETYPE_VALUE_PARTIAL);
+        List<String> setsFileName = args.getOptionValues(PARAM_UPDATE_SETSFILE);
+
+        // validate
+        if (setsFileName == null || setsFileName.isEmpty()) {
+            throw new ConfigurationException("No sets file name provided!");
+        } else if (setsFileName.size() > 1) {
+            throw new ConfigurationException("Only one sets file name allowed!");
+        }
+        String setIds = readSetsFile(setsFileName.get(0));
+        jobParamBuilder.addString(JobData.SETS_KEY, setIds);
+    }
+
+    private String readSetsFile(String fileName) throws ConfigurationException {
+        StringBuilder result = new StringBuilder();
+        File file = new File(fileName);
+        if (!file.exists()) {
+            throw new ConfigurationException("Sets file '" + fileName + "' not found. Checked folder "
+                    + file.getParentFile().getAbsolutePath());
+        } else if (!file.canRead()) {
+            throw new ConfigurationException("Cannot read from sets file '" +fileName);
+        }
+
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            String line;
+            int i = 0;
+            while ((line = br.readLine()) != null) {
+                line = line.trim();
+                if (line.length() > 0) {
+                    String setId = SetUtils.datasetNameToId(line);
+                    LOG.debug("Read setId={}", setId);
+                    if (setId.length() == 0) {
+                        LOG.error("Unable to parse set id in line " +i + ": " + line);
+                    }
+                    if (result.length() > 0) {
+                        result.append(",");
+                    }
+                    result.append(setId);
+                } else {
+                    break;
+                }
+                i++;
+            }
+        } catch (IOException e) {
+            throw new ConfigurationException("Error reading sets file", e);
+        }
+        return result.toString();
     }
 
     private void processDelete(JobParametersBuilder jobParametersBuilder) {

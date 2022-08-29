@@ -2,8 +2,8 @@
 
 Spring-Boot2 and Spring-Batch web application for generating updates to the Recommendation Engine
 
-The software retrieves set names from Solr and uses this to loads records (of a particular set) from a Mongo databases.
-Part of the record data is then sends it to the Embeddings API which returns vectors. The vectors are saved into a Milvus
+The software retrieves set names and uses this to loads records (of a particular set) from a Mongo databases.
+Part of the record data is then send to the Embeddings API which returns vectors. The vectors are saved into a Milvus
 database. Since the used Milvus version doesn't support string keys, we store a mapping between recordIds and keys
 in a local LMDB database.
 
@@ -15,6 +15,7 @@ in a local LMDB database.
  * Record Mongo database
  * Embeddings API
  * Milvus Recommendation Engine
+ * At least 90 GB free HDD space (for about 60 million records)
  
  <sup>* A Maven installation is recommended, but you could use the accompanying `mvnw` (Linux, Mac OS) or `mvnw.cmd` (Windows) 
  files instead.
@@ -30,14 +31,15 @@ go to the application root where the pom.xml is located and excute
 
 ### Command-line parameters
 
-One of the following 3 command-line options is required:
+One of the following command-line options is required:
 
   1. `--FULL` to start a full update covering all records
   2. `--from=<date>` to start a partial update with all records created or modified after the provided date.
       The date needs to be in ISO format, e.g. `--from=2021-10-08` or `--from=2021-10-08T12:15:00`
-  3. `--sets=<setId1>,<setId2>` to start a update for one or more sets. The list of sets should be comma-separated
+  3. `--sets=<setId1>,<setId2>` to start an update for one or more sets. The list of sets should be comma-separated
+  4. `--setFile=<fileName>` to load a list of sets from file. Expects 1 set name or set id per line
 
-At the moment the 3 options cannot be combined.
+At the moment the 4 options cannot be combined.
 
 Optional extra command-line options are:
   * `--DELETE` to delete the existing Milvus (and Lmdb) data before starting the update

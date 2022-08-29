@@ -69,8 +69,13 @@ public class LmdbWriterService {
         key2idDb.connect(null, isDeleteDb); // connect to/create unnamed database
 
         long count = id2keyDb.getItemCount();
-        if (count != key2idDb.getItemCount()) {
-            throw new LmdbStateException("Aborting update because the 2 lmdb tables are not equal in size");
+        long count2 = key2idDb.getItemCount();
+        if (count != count2) {
+            LOG.error("The 2 lmdb tables are not equal in size. {} has {} items and {} has {}",
+                milvusCollection + ID2KEY, count, milvusCollection + KEY2ID, count2);
+//            throw new LmdbStateException("Aborting update because the 2 lmdb tables are not equal in size. "
+//                + milvusCollection + ID2KEY + " has " + count + " items and " + milvusCollection + KEY2ID + " has " +
+//                    count2);
         }
 
         if (isFullUpdate && count > 0) {

@@ -15,7 +15,15 @@ import org.springframework.batch.item.support.AbstractItemCountingItemStreamItem
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PreDestroy;
-import java.util.*;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
@@ -34,8 +42,14 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
 
     private static final Logger LOG = LogManager.getLogger(MongoDbItemReader.class);
 
+    private static final String RESULT_FILE_NAME = "UpdateResults.csv";
+    private static final char SEPARATOR = ';';
+
     private final UpdaterSettings settings;
     private final MongoService mongoService;
+    private final FileWriter resultsFile;
+    private final BufferedWriter bufferedResultWriter;
+
 
     private Date updateStart; // to check if records were modified during the update
     private Boolean isFullUpdate;
@@ -55,10 +69,13 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
      * @param settings inject application settings bean
      * @param mongoService inject mongo service bean
      */
-    public MongoDbItemReader(UpdaterSettings settings, MongoService mongoService) {
+    public MongoDbItemReader(UpdaterSettings settings, MongoService mongoService) throws IOException {
         this.settings = settings;
         this.mongoService = mongoService;
         this.averageTime = new AverageTime(settings.getLogTimingInterval(), "reading from Mongo");
+
+        this.resultsFile = new FileWriter(RESULT_FILE_NAME, true);
+        this.bufferedResultWriter = new BufferedWriter(resultsFile);
     }
 
     @Override
@@ -147,6 +164,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
             progressLogger.logProgress(result.size());
         }
         if (setDone) {
+            writeResultToFile(setCursor);
             if (setCursor.itemsRead == 0) {
                 // Check if the set exists. It may have been deleted in the mean time, or the user provided an incorrect set name
                 long nrItemsInSet = mongoService.countAllAboutRegex("^/" + setCursor.setId + "/");
@@ -160,6 +178,23 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
             }
         }
         return result;
+    }
+
+    /**
+     * Whenever a set is done we write to csv file what was done.
+     */
+    private synchronized void writeResultToFile(SetInProgress setData) {
+        try {
+            DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss:SSS'Z'");
+            bufferedResultWriter.write(setData.setId + SEPARATOR
+                    + setData.itemsRead + SEPARATOR
+                    + df.format(setData.started) + SEPARATOR
+                    + df.format(new Date()));
+            bufferedResultWriter.newLine();
+            bufferedResultWriter.flush();
+        } catch (IOException e) {
+            LOG.error("Error writing to result file "+ RESULT_FILE_NAME, e);
+        }
     }
 
     private SetInProgress findWork() {
@@ -197,12 +232,14 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
     private static final class SetInProgress {
         private final String setId;
         private final String regex;
+        private final Date started;
         private String lastRetrieved;
         private long itemsRead;
 
         private SetInProgress(String setId) {
             this.setId = setId;
             this.regex = "^/" + setId + "/";
+            this.started = new Date();
             this.lastRetrieved = null;
             this.itemsRead = 0;
         }

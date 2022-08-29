@@ -32,3 +32,7 @@ build/
 
 ### LMDB files ###
 **/*.mdb
+
+### Updater filed ###
+sets.txt
+UpdateResults.csv

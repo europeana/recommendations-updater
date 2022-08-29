@@ -15,6 +15,8 @@ public final class JobData {
 
     public static final String SETS_KEY = "sets";
 
+    public static final String SETSFILE_KEY = "setsFile";
+
     public static final String DELETE_DB = "delete";
 
     private JobData() {
