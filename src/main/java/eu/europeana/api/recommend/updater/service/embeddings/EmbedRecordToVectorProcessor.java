@@ -38,13 +38,13 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
 
     private static final Logger LOG = LogManager.getLogger(EmbedRecordToVectorProcessor.class);
 
-    // on each retry it will add extra wait time, so with 7 retries with wait time 2 sec then the application
-    // will fail after 2 + 4 + 6 + 8 + 10 + 12 + 14 = 56 seconds
-    private static final int RETRY_GET_CLIENT = 7;
+    // on each retry it will add extra wait time, so with 5 retries with wait time 2 sec then the application
+    // will fail after 2 + 4 + 6 + 8 + 10 = 30 seconds
+    private static final int RETRY_GET_CLIENT = 5;
     private static final int RETRY_GET_CLIENT_WAIT_TIME = 2; // in seconds
-    // 4 retries, wait time 5 sec -> 5 + 10 + 15 + 20 = 50 seconds
-    private static final int RETRY_GET_VECTOR = 5;
-    private static final int RETRY_GET_VECTOR_WAIT_TIME = 5; // in seconds
+    // 7 retries, wait time 2 sec -> 2 + 4 + 6 + 8 + 10 + 12 + 14 = 56 seconds
+    private static final int RETRY_GET_VECTOR = 7;
+    private static final int RETRY_GET_VECTOR_WAIT_TIME = 2; // in seconds
 
     private static final long MS_PER_SEC = 1000;
 
