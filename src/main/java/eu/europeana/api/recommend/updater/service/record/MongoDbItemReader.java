@@ -250,6 +250,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
     public void shutDown() {
         // in case the application is shutdown, e.g. because of kill signal or of error
         for (SetInProgress set : setsInProgress) {
+            LOG.error("Processing set {} did not finish properly. {} items were read", set.setId, set.itemsRead);
             writeResultToFile(set, null);
         }
     }
