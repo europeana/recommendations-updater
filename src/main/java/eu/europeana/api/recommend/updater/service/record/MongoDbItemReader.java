@@ -110,7 +110,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
     @Override
     public ExitStatus afterStep(StepExecution stepExecution) {
         // do nothing
-        return null;
+        return stepExecution.getExitStatus();
     }
 
     @Override
@@ -164,7 +164,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
             progressLogger.logProgress(result.size());
         }
         if (setDone) {
-            writeResultToFile(setCursor);
+            writeResultToFile(setCursor, new Date());
             if (setCursor.itemsRead == 0) {
                 // Check if the set exists. It may have been deleted in the mean time, or the user provided an incorrect set name
                 long nrItemsInSet = mongoService.countAllAboutRegex("^/" + setCursor.setId + "/");
@@ -183,13 +183,13 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
     /**
      * Whenever a set is done we write to csv file what was done.
      */
-    private synchronized void writeResultToFile(SetInProgress setData) {
+    private synchronized void writeResultToFile(SetInProgress setData, Date dateDone) {
         try {
             DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss:SSS'Z'");
             bufferedResultWriter.write(setData.setId + SEPARATOR
                     + setData.itemsRead + SEPARATOR
                     + df.format(setData.started) + SEPARATOR
-                    + df.format(new Date()));
+                    + df.format(dateDone));
             bufferedResultWriter.newLine();
             bufferedResultWriter.flush();
         } catch (IOException e) {
@@ -246,4 +246,11 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
 
     }
 
+    @PreDestroy
+    public void shutDown() {
+        // in case the application is shutdown, e.g. because of kill signal or of error
+        for (SetInProgress set : setsInProgress) {
+            writeResultToFile(set, null);
+        }
+    }
 }

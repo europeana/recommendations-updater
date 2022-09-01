@@ -27,12 +27,11 @@ build/
 ### VS Code ###
 .vscode/
 
-**/*.user.properties
-/recommend_test_output.csv
-
 ### LMDB files ###
 **/*.mdb
 
 ### Updater filed ###
+**/*.user.properties
+recommend_test_output.csv
 sets.txt
 UpdateResults.csv

@@ -180,7 +180,7 @@ public class JobCmdLineStarter implements ApplicationRunner {
                 line = line.trim();
                 if (line.length() > 0) {
                     String setId = SetUtils.datasetNameToId(line);
-                    LOG.debug("Read setId={}", setId);
+                    LOG.trace("Read setId={}", setId);
                     if (setId.length() == 0) {
                         LOG.error("Unable to parse set id in line " +i + ": " + line);
                     }

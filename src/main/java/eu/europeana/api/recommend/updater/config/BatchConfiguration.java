@@ -3,6 +3,7 @@ package eu.europeana.api.recommend.updater.config;
 import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingRecord;
 import eu.europeana.api.recommend.updater.model.embeddings.RecordVectors;
 import eu.europeana.api.recommend.updater.model.record.Record;
+import eu.europeana.api.recommend.updater.service.MailService;
 import eu.europeana.api.recommend.updater.service.embeddings.EmbedRecordToVectorProcessor;
 import eu.europeana.api.recommend.updater.service.embeddings.EmbeddingRecordFileWriter;
 import eu.europeana.api.recommend.updater.service.embeddings.RecordVectorsFileWriter;
@@ -69,6 +70,8 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
     private final EmbedRecordToVectorProcessor embedRecordToVectorProcessor;
     // Step 2.4. Write RecordVectors to Milvus
     private final MilvusWriterService milvusWriterService;
+    // Last step send update results via email
+    private final MailService mailService;
 
     @SuppressWarnings("java:S107") // we want dependency injection, so need to have this many constructor parameters
     public BatchConfiguration(UpdaterSettings settings,
@@ -78,7 +81,8 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
                               MongoDbItemReader recordReader,
                               RecordToEmbedRecordProcessor recordToEmbedRecordProcessor,
                               EmbedRecordToVectorProcessor embedRecordToVectorProcessor,
-                              MilvusWriterService milvusWriterService) {
+                              MilvusWriterService milvusWriterService,
+                              MailService mailService) {
         this.settings = settings;
         this.jobBuilderFactory = jobBuilderFactory;
         this.stepBuilderFactory = stepBuilderFactory;
@@ -89,6 +93,7 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
         this.recordToEmbedRecordProcessor = recordToEmbedRecordProcessor;
         this.embedRecordToVectorProcessor = embedRecordToVectorProcessor;
         this.milvusWriterService = milvusWriterService;
+        this.mailService = mailService;
 
         SimpleAsyncTaskExecutor simpleTaskExecutor = new SimpleAsyncTaskExecutor();
         simpleTaskExecutor.setConcurrencyLimit(settings.getThreads());
@@ -180,6 +185,7 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
     public Job updateJob(Step step1, Step step2) {
         return jobBuilderFactory.get("updateJob")
                 .incrementer(new RunIdIncrementer())
+                .listener(mailService)
                 .flow(step1)
                 .next(step2)
                 .end()

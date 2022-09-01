@@ -53,6 +53,9 @@ public class UpdaterSettings {
     @Value("${test.file:}")
     private String testFile;
 
+    @Value("${mail.to:}")
+    private String mailTo;
+
     @PostConstruct
     private void logImportantSettings() throws ConfigurationException {
         if (this.batchSize != null && this.batchSize > MAX_BATCH_SIZE) {
@@ -142,5 +145,9 @@ public class UpdaterSettings {
 
     public String getTestFile() {
         return testFile;
+    }
+
+    public String getMailTo() {
+        return mailTo;
     }
 }
