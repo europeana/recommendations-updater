@@ -185,7 +185,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
      */
     private synchronized void writeResultToFile(SetInProgress setData, Date dateDone) {
         try {
-            DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss:SSS'Z'");
+            DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
             bufferedResultWriter.write(setData.setId + SEPARATOR
                     + setData.itemsRead + SEPARATOR
                     + df.format(setData.started) + SEPARATOR
