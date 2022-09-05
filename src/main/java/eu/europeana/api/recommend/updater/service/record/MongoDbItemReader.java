@@ -186,14 +186,18 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
     private synchronized void writeResultToFile(SetInProgress setData, Date dateDone) {
         try {
             DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
-            bufferedResultWriter.write(setData.setId + SEPARATOR
-                    + setData.itemsRead + SEPARATOR
-                    + df.format(setData.started) + SEPARATOR
-                    + df.format(dateDone));
-            bufferedResultWriter.newLine();
-            bufferedResultWriter.flush();
+            if (bufferedResultWriter != null) {
+                bufferedResultWriter.write(setData.setId + SEPARATOR
+                        + setData.itemsRead + SEPARATOR
+                        + df.format(setData.started) + SEPARATOR
+                        + df.format(dateDone));
+                bufferedResultWriter.newLine();
+                bufferedResultWriter.flush();
+            } else {
+                LOG.error("Unable to write results for set {} to file. BufferedResultWriter is null", setData.setId);
+            }
         } catch (IOException e) {
-            LOG.error("Error writing to result file "+ RESULT_FILE_NAME, e);
+            LOG.error("Error writing to result file {}", RESULT_FILE_NAME, e);
         }
     }
 
@@ -248,10 +252,21 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
 
     @PreDestroy
     public void shutDown() {
-        // in case the application is shutdown, e.g. because of kill signal or of error
+        // Try to write to file in case the application is shutdown because of kill signal or of error
         for (SetInProgress set : setsInProgress) {
             LOG.error("Processing set {} did not finish properly. {} items were read", set.setId, set.itemsRead);
             writeResultToFile(set, null);
+        }
+        // Close file writer
+        try {
+            if (bufferedResultWriter != null) {
+                bufferedResultWriter.close();
+            }
+            if (resultsFile != null) {
+                resultsFile.close();
+            }
+        } catch (IOException e) {
+            LOG.error("Error closing buffered result writer", e);
         }
     }
 }

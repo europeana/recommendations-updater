@@ -42,8 +42,8 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
     // will fail after 2 + 4 + 6 + 8 + 10 = 30 seconds
     private static final int RETRY_GET_CLIENT = 5;
     private static final int RETRY_GET_CLIENT_WAIT_TIME = 2; // in seconds
-    // 7 retries, wait time 3 sec -> 3 + 6 + 9 + 12 + 15 + 18 + 21 = 84 seconds
-    private static final int RETRY_GET_VECTOR = 7;
+    // 7 retries, wait time 3 sec -> 3 + 6 + 9 + 12 + 15 + 18 + 21 + 24 = 108 seconds
+    private static final int RETRY_GET_VECTOR = 8;
     private static final int RETRY_GET_VECTOR_WAIT_TIME = 3; // in seconds
 
     private static final long MS_PER_SEC = 1000;
