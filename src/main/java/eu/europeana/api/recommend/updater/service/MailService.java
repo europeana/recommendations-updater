@@ -57,7 +57,7 @@ public class MailService implements JobExecutionListener {
             }
             message.setText(s.toString());
 
-            LOG.info("Sending email to {}", mailTo);
+            LOG.info("Sending email to {}..", mailTo);
             mailSender.send(message);
         } else {
             LOG.info("Not sending email. No mail.to address is configured");

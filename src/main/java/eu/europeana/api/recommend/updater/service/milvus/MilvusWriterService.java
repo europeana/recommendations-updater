@@ -30,6 +30,8 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
 
     private static final Logger LOG = LogManager.getLogger(MilvusWriterService.class);
 
+    private static final int MILVUS_COLLECTION_DIMENSION = 300;
+
     private final UpdaterSettings settings;
     private final String collectionName; // used for both lmdb and Milvus!
 
@@ -128,7 +130,7 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
 
     private void createNewCollection(String collectionName) {
         // Method is copied from https://bitbucket.org/jhn-ngo/recsy-xx/src/master/src/engines/searchers/engine.py
-        CollectionMapping newCollection = new CollectionMapping.Builder(collectionName, 300).build();
+        CollectionMapping newCollection = new CollectionMapping.Builder(collectionName, MILVUS_COLLECTION_DIMENSION).build();
         checkMilvusResponse(milvusClient.createCollection(newCollection),
                 "Error creating collection");
 
@@ -184,29 +186,31 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
         }
 
         // write recordIds to lmdb (that generates the long ids for milvus)
+        // Note that lmdb can filter out records that were written earlier.
         List<Long> ids = lmdbWriterService.writeIds(recordIds);
+        if (ids == null || ids.isEmpty()) {
+            LOG.warn("No new records to write to Milvus");
+        } else {
+            if (LOG.isDebugEnabled()) {
+                long duration = System.currentTimeMillis() - start;
+                averageTimeLMDB.addTiming(duration);
+                LOG.trace("4a. Saved {} ids to LMDB in {} ms", ids.size(), duration);
+            }
 
-        if (LOG.isDebugEnabled()) {
-            long duration = System.currentTimeMillis() - start;
-            averageTimeLMDB.addTiming(duration);
-            LOG.trace("4a. Saved {} ids to LMDB in {} ms", ids.size(), duration);
-        }
-
-        start = System.currentTimeMillis();
-        if (!ids.isEmpty()) {
+            start = System.currentTimeMillis();
             // determine setname to use as milvus partition name
             if (settings.useMilvusPartitions()) {
                 setName = recordIds.get(0).split("/")[0];
                 LOG.trace("Setname is {} ", setName);
             }
             writeToMilvus(setName, ids, vectors);
-        }
-        if (LOG.isDebugEnabled()) {
-            long duration = System.currentTimeMillis() - start;
-            averageTimeMilvus.addTiming(duration);
-            LOG.trace("4b. Saved {} vectors in Milvus partition {} in {} ms", ids.size(), setName, duration);
-        }
 
+            if (LOG.isDebugEnabled()) {
+                long duration = System.currentTimeMillis() - start;
+                averageTimeMilvus.addTiming(duration);
+                LOG.trace("4b. Saved {} vectors in Milvus partition {} in {} ms", ids.size(), setName, duration);
+            }
+        }
     }
 
     private void writeToMilvus(String setName, List<Long> ids, List<List<Float>> vectors) {

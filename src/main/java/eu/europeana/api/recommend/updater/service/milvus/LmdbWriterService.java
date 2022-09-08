@@ -11,11 +11,13 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PreDestroy;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * Service that creates new lmdb databases or appends to an existing ones.
+ * It will also check if a particular record was already saved or not.
  *
  * Since the current Milvus version doesn't support string ids, we write 2 mappings to a local lmdb database. We mimic
  * here the approach used by the recommendation engine which is to create 2 folders:
@@ -71,8 +73,8 @@ public class LmdbWriterService {
         long count = id2keyDb.getItemCount();
         long count2 = key2idDb.getItemCount();
         if (count != count2) {
-            LOG.error("The 2 lmdb tables are not equal in size. {} has {} items and {} has {}",
-                milvusCollection + ID2KEY, count, milvusCollection + KEY2ID, count2);
+            LOG.error("The 2 lmdb tables are not equal in size. {}{} has {} items and {}{} has {}",
+                milvusCollection, ID2KEY, count, milvusCollection, KEY2ID, count2);
 //            throw new LmdbStateException("Aborting update because the 2 lmdb tables are not equal in size. "
 //                + milvusCollection + ID2KEY + " has " + count + " items and " + milvusCollection + KEY2ID + " has " +
 //                    count2);
@@ -108,6 +110,15 @@ public class LmdbWriterService {
         return count;
     }
 
+    /**
+     *
+     * @param recordId
+     * @return true if the provided recordId is already saved in the Lmdb key2id database
+     */
+    public boolean isPresent(String recordId) {
+        return key2idDb.readString(recordId) != null;
+    }
+
 
     /**
      * Generate multiple newIds for all provided keys and write them to the 2 databases
@@ -119,11 +130,32 @@ public class LmdbWriterService {
             throw new IllegalStateException("Run init method before doing a write!");
         }
 
+        removeDuplicates(keys);
+        if (keys.isEmpty()) {
+            return Collections.emptyList();
+        }
+
         List<Long> newIds = idGenerator.getNewIds(keys.size());
         List<String> newIdsString = newIds.stream().map(Object::toString).collect(Collectors.toUnmodifiableList());
-        id2keyDb.write(newIdsString, keys);
         key2idDb.write(keys, newIdsString);
+        id2keyDb.write(newIdsString, keys);
         return newIds;
+    }
+
+    /**
+     * Checks if we already processed items earlier (e.g. processed the same set twice)
+     */
+    private void removeDuplicates(List<String> recordIds) {
+        List<String> toRemove = new ArrayList<>();
+        for (String recordId : recordIds) {
+            if (this.isPresent(recordId)) {
+                toRemove.add(recordId);
+            }
+        }
+        if (!toRemove.isEmpty()) {
+            LOG.warn("Skipping {} records already in lmdb (e.g. {})", toRemove.size(), toRemove.get(0));
+            recordIds.removeAll(toRemove);
+        }
     }
 
     /**

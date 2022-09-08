@@ -122,6 +122,15 @@ public class LmdbTest {
     }
 
     @Test
+    public void testDuplicateKeys() {
+        String key ="/x/y";
+        this.lmdb.write(key, 1L);
+        this.lmdb.write(key, 2L);
+        // lmdb will overwrite the existing key
+        assertEquals(2L, this.lmdb.readLong(key));
+    }
+
+    @Test
     public void testItemCount() {
         assertEquals(0, this.lmdb.getItemCount());
         this.lmdb.write("test", 1L);

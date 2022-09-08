@@ -50,7 +50,6 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
     private final FileWriter resultsFile;
     private final BufferedWriter bufferedResultWriter;
 
-
     private Date updateStart; // to check if records were modified during the update
     private Boolean isFullUpdate;
     private Date fromDate;
@@ -104,7 +103,9 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
             totalItemsToRead = mongoService.countAllAboutRegex(setsRegex);
         }
         LOG.info("Total number of records to download {}", totalItemsToRead);
+
         this.progressLogger = new ProgressLogger(totalItemsToRead, settings.getLogProgressInterval());
+        this.writeHeader(totalItemsToRead);
     }
 
     @Override
@@ -174,10 +175,24 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
                     LOG.error("No items read for set {}, but set has {} items!", setCursor.setId, nrItemsInSet);
                 }
             } else {
-                LOG.info("Finished with set {}, retrieved {} items", setCursor.setId, setCursor.itemsRead);
+                LOG.info("Finished reading set {}, retrieved {} items", setCursor.setId, setCursor.itemsRead);
             }
         }
         return result;
+    }
+
+    private synchronized  void writeHeader(long itemsToRead) {
+        try {
+            this.bufferedResultWriter.write("SetId" + SEPARATOR
+                    + "Items read" + SEPARATOR
+                    + "Start date" + SEPARATOR
+                    + "End date" + SEPARATOR
+                    + "Records to download " + itemsToRead);
+            this.bufferedResultWriter.newLine();
+            this.bufferedResultWriter.flush();
+        } catch (IOException e) {
+            LOG.error("Error writing result file header", e);
+        }
     }
 
     /**
@@ -186,16 +201,12 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
     private synchronized void writeResultToFile(SetInProgress setData, Date dateDone) {
         try {
             DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
-            if (bufferedResultWriter != null) {
-                bufferedResultWriter.write(setData.setId + SEPARATOR
-                        + setData.itemsRead + SEPARATOR
-                        + df.format(setData.started) + SEPARATOR
-                        + df.format(dateDone));
-                bufferedResultWriter.newLine();
-                bufferedResultWriter.flush();
-            } else {
-                LOG.error("Unable to write results for set {} to file. BufferedResultWriter is null", setData.setId);
-            }
+            bufferedResultWriter.write(setData.setId + SEPARATOR
+                    + setData.itemsRead + SEPARATOR
+                    + df.format(setData.started) + SEPARATOR
+                    + (dateDone == null ? "null" : df.format(dateDone)));
+            bufferedResultWriter.newLine();
+            bufferedResultWriter.flush();
         } catch (IOException e) {
             LOG.error("Error writing to result file {}", RESULT_FILE_NAME, e);
         }
@@ -259,6 +270,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
         }
         // Close file writer
         try {
+            LOG.info("Closing result file writer...");
             if (bufferedResultWriter != null) {
                 bufferedResultWriter.close();
             }
@@ -266,7 +278,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
                 resultsFile.close();
             }
         } catch (IOException e) {
-            LOG.error("Error closing buffered result writer", e);
+            LOG.error("Error closing result file writer", e);
         }
     }
 }
