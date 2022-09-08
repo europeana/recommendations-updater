@@ -26,6 +26,8 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
 
     private static final Logger LOG = LogManager.getLogger(RecordToEmbedRecordProcessor.class);
 
+    private static final int MAX_VALUES = 100; // only take the first 100 values to prevent issues (some records have a lot of data)
+
     private static final String ENGLISH = "en";
     private static final String DEF = "def";
     private AverageTime averageTime;
@@ -58,29 +60,29 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
             Collection<String> places = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
             Collection<String> times = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
             for (Proxy p : rec.getProxies()) {
-                addAllValues(title, p.getDcTitle(), null, true);
-                addAllValues(title, p.getDctermsAlternative(), null, true);
+                addAllValues(title, p.getDcTitle(), null, true, "dcTitle", id);
+                addAllValues(title, p.getDctermsAlternative(), null, true, "dcTermsAlternative", id);
 
-                addAllValues(description, p.getDcDescription(), null, true);
+                addAllValues(description, p.getDcDescription(), null, true, "dcDescription", id);
 
-                addAllValues(creator, p.getDcCreator(), entities, true);
-                addAllValues(creator, p.getDcContributor(), entities, true);
-                addAllValues(creator, p.getDcSubject(), createEntityList(rec.getAgents()), false);
-                addAllValues(creator, p.getEdmHasMet(), createEntityList(rec.getAgents()), false);
+                addAllValues(creator, p.getDcCreator(), entities, true, "dcCreator", id);
+                addAllValues(creator, p.getDcContributor(), entities, true, "dcContributor", id);
+                addAllValues(creator, p.getDcSubject(), createEntityList(rec.getAgents()), false, "dcSubject (agents)", id);
+                addAllValues(creator, p.getEdmHasMet(), createEntityList(rec.getAgents()), false, "dcEdmHasMet (agents)", id);
 
-                addAllValues(tags, p.getDcType(), entities, true);
-                addAllValues(tags, p.getDctermsMedium(), entities, true);
-                addAllValues(tags, p.getDcFormat(), entities, true);
-                addAllValues(tags, p.getDcSubject(), createEntityList(rec.getConcepts()), true);
+                addAllValues(tags, p.getDcType(), entities, true, "dcType", id);
+                addAllValues(tags, p.getDctermsMedium(), entities, true, "dctermsMedium", id);
+                addAllValues(tags, p.getDcFormat(), entities, true, "dcFormat", id);
+                addAllValues(tags, p.getDcSubject(), createEntityList(rec.getConcepts()), true, "dcSubject", id);
 
-                addAllValues(places, p.getDctermsSpatial(), entities, true);
-                addAllValues(places, p.getEdmCurrentLocation(), entities, true);
-                addAllValues(places, p.getDcSubject(), createEntityList(rec.getPlaces()), false);
+                addAllValues(places, p.getDctermsSpatial(), entities, true, "dcTermsSpatial", id);
+                addAllValues(places, p.getEdmCurrentLocation(), entities, true, "edmCurrentLocation", id);
+                addAllValues(places, p.getDcSubject(), createEntityList(rec.getPlaces()), false, "dcSubject (places)", id);
 
-                addAllValues(times, p.getDctermsCreated(), entities, true);
-                addAllValues(times, p.getDctermsIssued(), entities, true);
-                addAllValues(times, p.getDctermsTemporal(), entities, true);
-                addAllValues(times, p.getEdmHasMet(), createEntityList(rec.getTimespans()), false);
+                addAllValues(times, p.getDctermsCreated(), entities, true, "dctermsCreated", id);
+                addAllValues(times, p.getDctermsIssued(), entities, true, "dctermsIssued", id);
+                addAllValues(times, p.getDctermsTemporal(), entities, true, "dctermsTemporal", id);
+                addAllValues(times, p.getEdmHasMet(), createEntityList(rec.getTimespans()), false, "edmHasMet (timespans)", id);
             }
 
             EmbeddingRecord embedRecord = new EmbeddingRecord(
@@ -115,10 +117,16 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
      * If the list of entities is not null then we also check for uris. For value that is an uri and that refers to an
      * existing entity we add the entities prefLabels and altLabels instead.
      */
-    private void addAllValues(Collection<String> target, Map<String, List<String>> source, List<Entity> entities, boolean addLiterals) {
+    private void addAllValues(Collection<String> target, Map<String, List<String>> source, List<Entity> entities,
+                              boolean addLiterals, String fieldName, String recordId) {
         if (source == null || source.keySet().isEmpty()) {
             return;
         }
+        if (target.size() > MAX_VALUES) {
+            LOG.warn("Maximum number of values {} reached reading field {} of record {}.", MAX_VALUES, fieldName, recordId);
+            return;
+        }
+
         // pick values from 1 language (including all uri's found in def field)
         if (source.containsKey(ENGLISH)) {
             addValuesAndResolveUris(target, source.get(ENGLISH), entities, addLiterals);
@@ -136,6 +144,9 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
 
     private void addValuesAndResolveUris(Collection<String> target, List<String> values, List<Entity> entities, boolean addLiterals) {
         for (String value : values) {
+            if (target.size() > MAX_VALUES) {
+                break;
+            }
             if (UriUtils.isUri(value)) {
                 resolveEntityUri(target, value, entities);
             } else if (addLiterals) {
@@ -149,6 +160,9 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
             return;
         }
         for (Entity entity : entities) {
+            if (target.size() > MAX_VALUES) {
+                break;
+            }
             if (value.equalsIgnoreCase(entity.getAbout())) {
                 String prefLabel = getFirstPrefLabel(entity);
                 LOG.trace("  Uri {} refers to entity {} with preflabel {}", value, entity.getAbout(), prefLabel);
