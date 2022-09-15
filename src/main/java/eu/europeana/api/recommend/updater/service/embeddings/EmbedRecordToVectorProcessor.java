@@ -48,7 +48,7 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
 
     private static final long MS_PER_SEC = 1000;
 
-    private static final int TIMEOUT = 40; // in seconds
+    private static final int TIMEOUT = 60; // in seconds (note that Embeddings API will fail when it takes longer than 50 seconds)
 
     private static final int MAX_RESPONSE_SIZE_MB = 10;
     private static final int BYTES_PER_MB = 1024 * 1024;
@@ -76,7 +76,7 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
         String[] embeddingsApis = settings.getEmbeddingsApiUrl().split(",");
         if (embeddingsApis.length == 1) {
             webClients.add(createWebClient(settings.getEmbeddingsApiUrl()));
-            LOG.info("Using 1 Embeddings API address at {}", webClients.peek());
+            LOG.info("Using 1 Embeddings API address at {}", settings.getEmbeddingsApiUrl());
         } else {
             LOG.info("Multiple Embeddings API addresses found");
             for (String embeddingApi : embeddingsApis) {
@@ -166,13 +166,14 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
                 } else {
                     setName = getSetName(embeddingRecords.get(0));
                 }
-                LOG.warn("Request to Embeddings API for set {} failed after {} ms with error {} and cause {}. Attempt {}, retrying....",
-                        setName, System.currentTimeMillis() - start, e.getMessage(), e.getCause(), nrTries);
+
+                int sleepTime = RETRY_GET_VECTOR_WAIT_TIME * nrTries;
+                LOG.warn("Request to Embeddings API for set {} failed after {} ms with error {} and cause {}. " +
+                                "Attempt {}, will retry in {} seconds",  setName, System.currentTimeMillis() - start,
+                                e.getMessage(), e.getCause(), nrTries, sleepTime);
                 if (shuttingDown || nrTries == maxTries) {
                     throw e; // rethrow so error is propagated
                 } else {
-                    int sleepTime = RETRY_GET_VECTOR_WAIT_TIME * nrTries;
-                    LOG.warn("Holding off thread for set {} for {} seconds", setName, sleepTime);
                     Thread.sleep(sleepTime * MS_PER_SEC); // wait some extra time before we try again
                 }
             }
@@ -203,22 +204,22 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
      */
     private synchronized WebClient getWebClientFromQueue(int maxTries) throws InterruptedException, EmbeddingsException {
         int nrTries = 1;
-        WebClient result = null;
+        WebClient webClient = null;
 
-        while (result == null && nrTries < maxTries){
-            result = webClients.poll();
-            if (result == null) {
+        while (webClient == null && nrTries < maxTries){
+            webClient = webClients.poll();
+            if (webClient == null) {
                 int sleepTime = RETRY_GET_CLIENT_WAIT_TIME * nrTries;
                 LOG.warn("All Embeddings API instances are in use. Waiting {} sec ...", sleepTime);
-                Thread.sleep(sleepTime * MS_PER_SEC); // wait some extra time before we try again
+                webClient.wait(sleepTime * MS_PER_SEC); // wait some extra time before we try again
                 nrTries++;
             }
         }
 
-        if (result == null) {
+        if (webClient == null) {
             throw new EmbeddingsException("No Embeddings API address available. Giving up");
         }
-        return result;
+        return webClient;
     }
 
     private Mono<EmbeddingResponse> getVectors(EmbeddingRecord[] embeddingRecords) throws InterruptedException, EmbeddingsException {

@@ -117,6 +117,10 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
     @Override
     protected void doOpen() {
         this.updateStart = new Date();
+        // prepare sets to process
+        for (int i = 0; i < settings.getThreads(); i++) {
+            addSetInProgress();
+        }
     }
 
     @PreDestroy
@@ -130,23 +134,26 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
     // The start variable needs to be where it is, cannot be moved (S1941)
     @SuppressWarnings({"java:S1168", "java:S1941" })
     protected List<Record> doRead() {
-        SetInProgress setCursor = findWork();
-        if (setCursor == null) {
+        SetInProgress setToProcess = getSetInProgress();
+        if (setToProcess == null) {
             return null;
+        }
+        if (LOG.isTraceEnabled() && setToProcess.itemsRead == 0) {
+            LOG.trace("Start reading set {}", setToProcess.setId);
         }
 
         // fetch records for selected setCursor
         long start = System.currentTimeMillis();
         List<Record> result;
         if (isFullUpdate || this.fromDate == null) {
-            result = mongoService.getAllRecordsPaged(setCursor.regex, setCursor.lastRetrieved, settings.getBatchSize());
+            result = mongoService.getAllRecordsPaged(setToProcess.regex, setToProcess.lastRetrieved, settings.getBatchSize());
         } else {
-            result = mongoService.getAllRecordsPagedUpdatedAfter(setCursor.regex, fromDate, setCursor.lastRetrieved, settings.getBatchSize());
+            result = mongoService.getAllRecordsPagedUpdatedAfter(setToProcess.regex, fromDate, setToProcess.lastRetrieved, settings.getBatchSize());
         }
         boolean setDone = result.isEmpty() || result.size() < settings.getBatchSize();
 
         if (LOG.isTraceEnabled()) {
-            LOG.trace("1. Retrieved {} items from set {} in {} ms", result.size(), setCursor.setId, System.currentTimeMillis() - start);
+            LOG.trace("1. Retrieved {} items from set {} in {} ms", result.size(), setToProcess.setId, System.currentTimeMillis() - start);
         }
         if (LOG.isDebugEnabled()) {
             averageTime.addTiming(System.currentTimeMillis() - start);
@@ -155,28 +162,32 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
             result = checkTimestamp(result); // probably not needed, but just in case
         }
 
-        // return result
         if (!result.isEmpty()) {
-            setCursor.itemsRead = setCursor.itemsRead + result.size();
-            setCursor.lastRetrieved = result.get(result.size() - 1).getMongoId();
+            // more work to do, so keep set in progress (and update stats)
+            setToProcess.itemsRead = setToProcess.itemsRead + result.size();
+            setToProcess.lastRetrieved = result.get(result.size() - 1).getMongoId();
             if (!setDone) {
-                setsInProgress.add(setCursor); // put back in queue, still work to be done
+                setsInProgress.add(setToProcess); // put back in queue, still work to be done
             }
             progressLogger.logProgress(result.size());
         }
+
         if (setDone) {
-            writeResultToFile(setCursor, new Date());
-            if (setCursor.itemsRead == 0) {
+            // work is done for this set, setInProgress doesn't go back in queue
+            if (setToProcess.itemsRead == 0) {
                 // Check if the set exists. It may have been deleted in the mean time, or the user provided an incorrect set name
-                long nrItemsInSet = mongoService.countAllAboutRegex("^/" + setCursor.setId + "/");
+                long nrItemsInSet = mongoService.countAllAboutRegex("^/" + setToProcess.setId + "/");
                 if (nrItemsInSet == 0) {
-                    LOG.warn("No items found for set {}!", setCursor.setId);
+                    LOG.warn("No items found for set {}!", setToProcess.setId);
                 } else {
-                    LOG.error("No items read for set {}, but set has {} items!", setCursor.setId, nrItemsInSet);
+                    LOG.error("No items read for set {}, but set has {} items!", setToProcess.setId, nrItemsInSet);
                 }
             } else {
-                LOG.info("Finished reading set {}, retrieved {} items", setCursor.setId, setCursor.itemsRead);
+                LOG.info("Finished reading set {}, retrieved {} items", setToProcess.setId, setToProcess.itemsRead);
             }
+
+            writeResultToFile(setToProcess, new Date());
+            addSetInProgress();
         }
         return result;
     }
@@ -212,21 +223,38 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
         }
     }
 
-    private SetInProgress findWork() {
+    /**
+     * Move a set from the 'to do' queue to 'in progress'
+     * @return the id of the set that was moved, or null if there was none.
+     */
+    private String addSetInProgress() {
+        String newSetId = setsToDo.poll();
+        if (newSetId == null) {
+            LOG.debug("No more sets to process");
+            return null;
+        }
+        SetInProgress newSet = new SetInProgress(newSetId);
+        setsInProgress.add(newSet);
+        LOG.info("Starting on new set {}", newSet.setId);
+        return newSet.setId;
+    }
+
+    /**
+     * Pick a set from the 'in progress' queue
+     */
+    private SetInProgress getSetInProgress() {
         SetInProgress result = setsInProgress.poll();
         if (result == null) {
-            // create new work
-            String newSet = setsToDo.poll();
+            String newSet = addSetInProgress();
             if (newSet == null) {
-                LOG.info("No more work. Stopping thread");
-                return null;
+                LOG.info("No more sets in progress. Stopping thread");
+            } else {
+                // Should not happen. New sets should be added to the queue when previous one finished
+                LOG.error("No sets in progress, adding new set {}", newSet);
             }
-
-            LOG.info("Starting on set {}", newSet);
-            return new SetInProgress(newSet);
+        } else {
+            LOG.trace("Continue with set {}, skip = {}", result.setId, result.itemsRead);
         }
-
-        LOG.trace("Continue with set {}, skip = {}", result.setId, result.itemsRead);
         return result;
     }
 

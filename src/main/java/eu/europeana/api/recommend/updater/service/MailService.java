@@ -10,6 +10,8 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 
 /**
@@ -44,15 +46,16 @@ public class MailService implements JobExecutionListener {
             message.setFrom(FROM);
             message.setTo(mailTo);
 
-            SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy hh:mm");
-            String text = "Recommendations Updater finished at " + sdf.format(jobExecution.getEndTime())
-                    + " with status " + jobExecution.getExitStatus().getExitCode();
+            SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm");
+            String text = "Recommendations Updater running on " + getHostName()
+                    + " finished with status " + jobExecution.getExitStatus().getExitCode();
             message.setSubject(text);
 
             StringBuilder s = new StringBuilder(text);
-            s.append("\n");
+            s.append("\n")
+                    .append("Time: " + sdf.format(jobExecution.getEndTime()));
             for (Throwable t : jobExecution.getAllFailureExceptions()) {
-                s.append("\nError ");
+                s.append("\nError: ");
                 s.append(t.getCause());
             }
             message.setText(s.toString());
@@ -62,6 +65,16 @@ public class MailService implements JobExecutionListener {
         } else {
             LOG.info("Not sending email. No mail.to address is configured");
         }
+    }
+
+    private String getHostName() {
+        try {
+            return InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            LOG.warn("Cannot read host name", e);
+            return "Unknown host";
+        }
+
     }
 
 }

@@ -72,8 +72,10 @@ public class EmbeddingRecordFileWriter extends FlatFileItemWriterBuilder<List<Em
                         .append(arrayToString(embeddingRecord.getTimes()))
                         .append("\n");
             }
-            // remove last newline
-            s.deleteCharAt(s.length() - 1);
+            if (s.length() > 0) {
+                // remove last newline
+                s.deleteCharAt(s.length() - 1);
+            }
             return s.toString();
         };
     }

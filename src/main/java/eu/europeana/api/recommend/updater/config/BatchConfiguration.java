@@ -27,7 +27,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
-import org.springframework.web.reactive.function.client.WebClientRequestException;
 
 import javax.sql.DataSource;
 import java.util.Arrays;
@@ -146,8 +145,9 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
 
     @Bean
     public Step step2() {
-        if (UpdaterSettings.isValueDefined(settings.getEmbeddingsApiUrl()) &&
-                UpdaterSettings.isValueDefined(settings.getMilvusCollection())) {
+        if (UpdaterSettings.isValueDefined(settings.getEmbeddingsApiUrl())
+                && UpdaterSettings.isValueDefined(settings.getMilvusCollection())
+                && UpdaterSettings.isValueDefined(settings.getMilvusUrl())) {
             LOG.info("Embeddings API and Milvus are configured. Saving vectors to Milvus collection {} ", settings.getMilvusCollection());
             return stepBuilderFactory.get("step2")
                     .<List<Record>, List<RecordVectors>>chunk(1)// chunksize=1 because we want to write to Embeddings API 1 list of <batchsize> records

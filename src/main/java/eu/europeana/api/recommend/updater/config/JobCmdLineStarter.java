@@ -164,7 +164,6 @@ public class JobCmdLineStarter implements ApplicationRunner {
     }
 
     private String readSetsFile(String fileName) throws ConfigurationException {
-        StringBuilder result = new StringBuilder();
         File file = new File(fileName);
         if (!file.exists()) {
             throw new ConfigurationException("Sets file '" + fileName + "' not found. Checked folder "
@@ -173,29 +172,37 @@ public class JobCmdLineStarter implements ApplicationRunner {
             throw new ConfigurationException("Cannot read from sets file '" +fileName);
         }
 
+        String result;
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            String line;
-            int i = 0;
-            while ((line = br.readLine()) != null) {
-                line = line.trim();
-                if (line.length() > 0) {
-                    String setId = SetUtils.datasetNameToId(line);
-                    LOG.trace("Read setId={}", setId);
-                    if (setId.length() == 0) {
-                        LOG.error("Unable to parse set id in line " +i + ": " + line);
-                    }
-                    if (result.length() > 0) {
-                        result.append(",");
-                    }
-                    result.append(setId);
-                } else {
-                    break;
-                }
-                i++;
-            }
+            result = readSets(br);
         } catch (IOException e) {
             throw new ConfigurationException("Error reading sets file", e);
         }
+        return result;
+    }
+
+    private String readSets(BufferedReader br) throws IOException {
+        StringBuilder result = new StringBuilder();
+        String line;
+        int i = 0;
+        while ((line = br.readLine()) != null) {
+            line = line.trim();
+            if (line.length() > 0) {
+                String setId = SetUtils.datasetNameToId(line);
+                LOG.trace("Read setId = {}", setId);
+                if (setId.length() == 0) {
+                    LOG.error("Unable to parse set id in line {}: {}", i, line);
+                }
+                if (result.length() > 0) {
+                    result.append(",");
+                }
+                result.append(setId);
+            } else {
+                break;
+            }
+            i++;
+        }
+        LOG.info("Read {} sets from file", i);
         return result.toString();
     }
 
@@ -219,7 +226,7 @@ public class JobCmdLineStarter implements ApplicationRunner {
     public static List<String> getSetsToProcess(JobParameters jobParameters) {
         String sets = jobParameters.getString(JobData.SETS_KEY);
         if (StringUtils.isBlank(sets)) {
-            return Collections.EMPTY_LIST;
+            return Collections.emptyList();
         }
         return Arrays.asList(sets.split(SET_SEPARATOR));
     }
