@@ -17,7 +17,7 @@
         <!-- MilvusClient will generate INFO logs each time vectors are inserted, so this is set to WARN to hide that -->
         <Logger name="io.milvus.client.AbstractMilvusGrpcClient" level="WARN" />
 
-        <Logger name="eu.europeana.api.recommend.updater.config.JobCmdLineStarter" level="DEBUG"/>
+        <Logger name="eu.europeana.api.recommend.updater.config.JobCmdLineStarter" level="INFO"/>
 
         <!-- Set to DEBUG to see all sets and the number of items they contain -->
         <Logger name="eu.europeana.api.recommend.updater.service.record.SolrSetReader" level="INFO"/>
@@ -35,7 +35,7 @@
         <Logger name="eu.europeana.api.recommend.updater.service.embeddings.EmbedRecordToVectorProcessor" level="DEBUG"/>
 
         <!-- Set to DEBUG to see average timing, set to TRACE to see requests sent to Milvus (and LMDB) -->
-        <Logger name="eu.europeana.api.recommend.updater.service.milvus.MilvusWriterService" level="DEBUG"/>
+        <Logger name="eu.europeana.api.recommend.updater.service.milvus.MilvusWriterService" level="INFO"/>
 
         <!-- Required to see average time logs -->
         <Logger name="eu.europeana.api.recommend.updater.util.AverageTime" level="DEBUG"/>

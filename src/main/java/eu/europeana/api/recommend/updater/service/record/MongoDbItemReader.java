@@ -138,8 +138,8 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
         if (setToProcess == null) {
             return null;
         }
-        if (LOG.isTraceEnabled() && setToProcess.itemsRead == 0) {
-            LOG.trace("Start reading set {}", setToProcess.setId);
+        if (setToProcess.itemsRead == 0) {
+            LOG.debug("Start reading set {}", setToProcess.setId);
         }
 
         // fetch records for selected setCursor

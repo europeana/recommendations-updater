@@ -153,7 +153,7 @@ public class LmdbWriterService {
             }
         }
         if (!toRemove.isEmpty()) {
-            LOG.warn("Skipping {} records already in lmdb (e.g. {})", toRemove.size(), toRemove.get(0));
+            LOG.debug("Skipping {} records already in lmdb (e.g. {})", toRemove.size(), toRemove.get(0));
             recordIds.removeAll(toRemove);
         }
     }
