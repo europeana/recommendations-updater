@@ -6,7 +6,10 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.lmdbjava.*;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 
@@ -16,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * This is a special test class that we use to check what is in a provided LMDB database. The goal is to verify if the
  * database contains valid data we can read (see also ticket https://europeana.atlassian.net/browse/EA-2935).
- * This means that this test is usually disabled and we only start it manually when necessary.
+ * This means that this test is usually disabled and we only start certain tests manually when there is a need.
  *
  * @author Patrick Ehlert
  */
@@ -100,6 +103,44 @@ public class CheckLmdbContents {
         String recordId = "11651/_Botany_L_2812640";
         String lmdbId = key2id.readString(recordId);
         LOG.info("RecordId = /{} -> lmdb id = {}", recordId, lmdbId);
+    }
+
+    /**
+     * Use this test to write the contents of the lmdb Key2id database to file for a particular set
+     */
+    @Test
+    public void testOutputContents() {
+        String setId = "2064905";
+        File file = new File("lmdb_set_" + setId +".csv");
+
+        Env<ByteBuffer> env = Env.create()
+                .setMapSize(Lmdb.MAX_DB_SIZE)
+                .setMaxDbs(1)
+                .open(new File(DB_FOLDER  + LmdbWriterService.KEY2ID), EnvFlags.MDB_RDONLY_ENV);
+        Dbi<ByteBuffer> dbi = env.openDbi(DB_NAME);
+
+        try (Txn<ByteBuffer> txn = env.txnRead();
+            BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+            Stat stats = dbi.stat(txn);
+
+            if (stats.entries > 10000) {
+                LOG.info("Iterating over all {} items in LMDB database. This may take a while...", stats.entries);
+            }
+            CursorIterable<ByteBuffer> it = dbi.iterate(txn);
+            Iterator<CursorIterable.KeyVal<ByteBuffer>> itKey = it.iterator();
+            while (itKey.hasNext()) {
+                CursorIterable.KeyVal<ByteBuffer> keyVal = itKey.next();
+                String recordId = Lmdb.byteBufferToString(keyVal.key());
+                if (recordId.startsWith(setId + "/")) {
+                    writer.write(recordId + ";" + Lmdb.byteBufferToString(keyVal.val()) + "\n");
+                }
+            }
+        } catch (IOException io) {
+            LOG.error("Error writing to csv file", io);
+        } finally {
+            dbi.close();
+            env.close();
+        }
     }
 
 }
