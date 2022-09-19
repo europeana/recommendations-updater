@@ -6,6 +6,7 @@ import eu.europeana.api.recommend.updater.model.record.Entity;
 import eu.europeana.api.recommend.updater.model.record.Proxy;
 import eu.europeana.api.recommend.updater.model.record.Record;
 import eu.europeana.api.recommend.updater.util.AverageTime;
+import eu.europeana.api.recommend.updater.util.StringLimitUtils;
 import eu.europeana.api.recommend.updater.util.UriUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -27,6 +28,7 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
     private static final Logger LOG = LogManager.getLogger(RecordToEmbedRecordProcessor.class);
 
     private static final int MAX_VALUES = 100; // only take the first 100 values to prevent issues (some records have a lot of data)
+    private static final int MAX_VALUE_LENGTH = 3000; // maximum number of characters for a value
 
     private static final String ENGLISH = "en";
     private static final String DEF = "def";
@@ -123,7 +125,7 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
             return;
         }
         if (target.size() > MAX_VALUES) {
-            LOG.warn("Maximum number of values {} reached reading field {} of record {}.", MAX_VALUES, fieldName, recordId);
+            LOG.warn("Maximum number of values {} reached reading field {} of record {}", MAX_VALUES, fieldName, recordId);
             return;
         }
 
@@ -150,7 +152,12 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
             if (UriUtils.isUri(value)) {
                 resolveEntityUri(target, value, entities);
             } else if (addLiterals) {
-                target.add(value);
+                String toAdd = value;
+                if (value.length() > MAX_VALUE_LENGTH) {
+                    toAdd = StringLimitUtils.limit(value, MAX_VALUE_LENGTH);
+                    LOG.warn("Reducing number of characters from {} to {}", value.length(), toAdd.length());
+                }
+                target.add(toAdd);
             }
         }
     }
