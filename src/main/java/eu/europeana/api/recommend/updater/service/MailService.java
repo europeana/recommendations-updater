@@ -56,7 +56,12 @@ public class MailService implements JobExecutionListener {
                     .append("Time: " + sdf.format(jobExecution.getEndTime()));
             for (Throwable t : jobExecution.getAllFailureExceptions()) {
                 s.append("\nError: ");
-                s.append(t.getCause());
+                Throwable cause = t.getCause();
+                if (cause == null) {
+                    s.append("n/a");
+                } else {
+                    s.append(cause.getMessage()).append("\nCaused by").append(cause.getCause());
+                }
             }
             message.setText(s.toString());
 

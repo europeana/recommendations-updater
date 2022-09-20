@@ -3,12 +3,21 @@ package eu.europeana.api.recommend.updater.exception;
 import eu.europeana.api.commons.error.EuropeanaApiException;
 
 /**
- * Thrown when we can't connect to Embeddings API
+ * Thrown when we there is a problem communicating with the Embeddings API
  */
 public class EmbeddingsException extends EuropeanaApiException {
 
     /**
-     * Initialise a new configurations exception
+     * Initialise a new exception
+     * @param msg error message
+     * @param cause root cause exception
+     */
+    public EmbeddingsException(String msg, Throwable cause) {
+        super(msg,cause);
+    }
+
+    /**
+     * Initialise a new exception
      * @param msg error message
      */
     public EmbeddingsException(String msg) {

@@ -172,7 +172,8 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
                                 "Attempt {}, will retry in {} seconds",  setName, System.currentTimeMillis() - start,
                                 e.getMessage(), e.getCause(), nrTries, sleepTime);
                 if (shuttingDown || nrTries == maxTries) {
-                    throw e; // rethrow so error is propagated
+                    // rethrow (with set info) so error is propagated
+                    throw new EmbeddingsException("Request to Embeddings API failed too often for set " + setName, e);
                 } else {
                     Thread.sleep(sleepTime * MS_PER_SEC); // wait some extra time before we try again
                 }

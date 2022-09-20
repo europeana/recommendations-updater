@@ -189,7 +189,7 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
         // Note that lmdb can filter out records that were written earlier.
         List<Long> ids = lmdbWriterService.writeIds(recordIds);
         if (ids == null || ids.isEmpty()) {
-            LOG.warn("No new records to write to Milvus");
+            LOG.debug("No new records to write to Milvus");
         } else {
             if (LOG.isDebugEnabled()) {
                 long duration = System.currentTimeMillis() - start;
