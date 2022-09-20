@@ -130,21 +130,23 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
         }
 
         // pick values from 1 language (including all uri's found in def field)
+        String fieldNameRecordId = fieldName + " of record " + recordId;
         if (source.containsKey(ENGLISH)) {
-            addValuesAndResolveUris(target, source.get(ENGLISH), entities, addLiterals);
+            addValuesAndResolveUris(target, source.get(ENGLISH), entities, addLiterals, fieldNameRecordId);
             // always include uri's from def field (always exclude non-uri def field values)
             if (entities != null && source.containsKey(DEF)) {
-                addValuesAndResolveUris(target, source.get(DEF), entities, false);
+                addValuesAndResolveUris(target, source.get(DEF), entities, false, fieldNameRecordId);
             }
         } else if (source.containsKey(DEF)) {
-            addValuesAndResolveUris(target, source.get(DEF), entities, addLiterals);
+            addValuesAndResolveUris(target, source.get(DEF), entities, addLiterals, fieldNameRecordId);
         } else {
             List<String> values = source.values().iterator().next(); // pick any language
-            addValuesAndResolveUris(target, values, entities, addLiterals);
+            addValuesAndResolveUris(target, values, entities, addLiterals, fieldNameRecordId);
         }
     }
 
-    private void addValuesAndResolveUris(Collection<String> target, List<String> values, List<Entity> entities, boolean addLiterals) {
+    private void addValuesAndResolveUris(Collection<String> target, List<String> values, List<Entity> entities, boolean addLiterals,
+                                         String description) {
         for (String value : values) {
             if (target.size() > MAX_VALUES) {
                 break;
@@ -155,7 +157,7 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
                 String toAdd = value;
                 if (value.length() > MAX_VALUE_LENGTH) {
                     toAdd = StringLimitUtils.limit(value, MAX_VALUE_LENGTH);
-                    LOG.warn("Reducing number of characters from {} to {}", value.length(), toAdd.length());
+                    LOG.warn("Reducing number of characters of {} from {} to {}", description, value.length(), toAdd.length());
                 }
                 target.add(toAdd);
             }
