@@ -138,15 +138,22 @@ public class JobCmdLineStarter implements ApplicationRunner {
 
     private void processSets(ApplicationArguments args, JobParametersBuilder jobParamBuilder) throws ConfigurationException {
         jobParamBuilder.addString(JobData.UPDATETYPE_KEY, JobData.UPDATETYPE_VALUE_PARTIAL);
-        List<String> setIds = args.getOptionValues(PARAM_UPDATE_SETS);
+        List<String> setNames = args.getOptionValues(PARAM_UPDATE_SETS);
 
         // validate
-        String ids = setIds.get(0);
+        String ids = setNames.get(0);
         if (StringUtils.isBlank(ids)) {
             throw new ConfigurationException( PARAM_UPDATE_SETS + " parameter found, but no set ids provided!");
         }
+        StringBuilder setIds = new StringBuilder();
+        for (String setName : setNames) {
+            // keep only setId
+            setIds.append(SetUtils.datasetNameToId(setName)).append(",");
+        }
+        // remove last trailing comma
+        setIds.deleteCharAt(setIds.length() - 1);
 
-        jobParamBuilder.addString(JobData.SETS_KEY, ids);
+        jobParamBuilder.addString(JobData.SETS_KEY, setIds.toString());
     }
 
     private void processSetsFile(ApplicationArguments args, JobParametersBuilder jobParamBuilder) throws ConfigurationException {
