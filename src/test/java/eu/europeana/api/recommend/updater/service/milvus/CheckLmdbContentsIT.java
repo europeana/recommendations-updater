@@ -24,9 +24,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @author Patrick Ehlert
  */
 @Disabled("Run this manually if you want to check contents of a particular lmdb file")
-public class CheckLmdbContents {
+public class CheckLmdbContentsIT {
 
-    private static final Logger LOG = LogManager.getLogger(CheckLmdbContents.class);
+    private static final Logger LOG = LogManager.getLogger(CheckLmdbContentsIT.class);
 
     // folder name containing the 2 recommendation lmdb databases, without the _id2key and _key2id suffix
     private static final String DB_FOLDER = "./test";
@@ -110,7 +110,7 @@ public class CheckLmdbContents {
      */
     @Test
     public void testOutputContents() {
-        String setId = "2064905";
+        String setId = "2022702";
         File file = new File("lmdb_set_" + setId +".csv");
 
         Env<ByteBuffer> env = Env.create()
@@ -123,8 +123,8 @@ public class CheckLmdbContents {
             BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
             Stat stats = dbi.stat(txn);
 
-            if (stats.entries > 10000) {
-                LOG.info("Iterating over all {} items in LMDB database. This may take a while...", stats.entries);
+            if (stats.entries > 100_000) {
+                LOG.info("Iterating over all {} items in LMDB database. This may take a while (depending on your hdd speed)...", stats.entries);
             }
             CursorIterable<ByteBuffer> it = dbi.iterate(txn);
             Iterator<CursorIterable.KeyVal<ByteBuffer>> itKey = it.iterator();

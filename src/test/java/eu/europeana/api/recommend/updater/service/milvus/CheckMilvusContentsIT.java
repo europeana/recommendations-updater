@@ -17,9 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @author Patrick Ehlert
  */
 @Disabled("Run this manually if you want to check contents of a milvus collection")
-public class CheckMilvusContents {
+public class CheckMilvusContentsIT {
 
-    private static final Logger LOG = LogManager.getLogger(CheckMilvusContents.class);
+    private static final Logger LOG = LogManager.getLogger(CheckMilvusContentsIT.class);
 
     private static final String SERVER_URL = "";
     private static final int SERVER_PORT = 0;
@@ -88,6 +88,7 @@ public class CheckMilvusContents {
     /**
      * Warning! Only activate and run this test if you want to delete a particular Milvus database
      */
+//    @Disabled
 //    @Test
 //    public void testDelete() {
 //        String collectionToDrop = "smalltest";

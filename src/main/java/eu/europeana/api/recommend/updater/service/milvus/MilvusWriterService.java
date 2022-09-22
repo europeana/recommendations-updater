@@ -224,7 +224,7 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
                 .withVectorIds(ids)
                 .withFloatVectors(vectors);
 
-        if (setName != null) {
+        if (settings.useMilvusPartitions() && setName != null) {
             // do we need to create a new partition first?
             if (!partitionNames.contains(setName)) {
                 LOG.debug("Creating new milvus partition {}", setName);
@@ -240,6 +240,10 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
             throw new MilvusStateException("Error writing vectors to Milvus: " + response.getResponse().getMessage() +
                     "/nVectorIds = "+response.getVectorIds());
         }
+        // Data seems to be written to the Milvus wal file regardless of calling flush or not, but we call it anyway
+        // just to be sure.
+        checkMilvusResponse(milvusClient.flush(collectionName), "Error flushing data to Milvus collection "
+                + collectionName);
     }
 
 }

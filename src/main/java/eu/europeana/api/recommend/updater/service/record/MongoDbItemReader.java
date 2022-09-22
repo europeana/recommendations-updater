@@ -73,7 +73,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
         this.mongoService = mongoService;
         this.averageTime = new AverageTime(settings.getLogTimingInterval(), "reading from Mongo");
 
-        this.resultsFile = new FileWriter(RESULT_FILE_NAME, true);
+        this.resultsFile = new FileWriter(RESULT_FILE_NAME + "-" + settings.getMilvusCollection(), true);
         this.bufferedResultWriter = new BufferedWriter(resultsFile);
     }
 
@@ -139,7 +139,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
             return null;
         }
         if (setToProcess.itemsRead == 0) {
-            LOG.debug("Start reading set {}", setToProcess.setId);
+            LOG.trace("Start reading set {}", setToProcess.setId);
         }
 
         // fetch records for selected setCursor
