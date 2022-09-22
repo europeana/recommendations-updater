@@ -42,7 +42,8 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
 
     private static final Logger LOG = LogManager.getLogger(MongoDbItemReader.class);
 
-    private static final String RESULT_FILE_NAME = "UpdateResults.csv";
+    private static final String RESULT_FILE_NAME = "UpdateResults";
+    private static final String RESULT_FILE_EXTENSION = ".csv";
     private static final char SEPARATOR = ';';
 
     private final UpdaterSettings settings;
@@ -73,7 +74,8 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
         this.mongoService = mongoService;
         this.averageTime = new AverageTime(settings.getLogTimingInterval(), "reading from Mongo");
 
-        this.resultsFile = new FileWriter(RESULT_FILE_NAME + "-" + settings.getMilvusCollection(), true);
+        this.resultsFile = new FileWriter(RESULT_FILE_NAME +
+                "-" + settings.getMilvusCollection() + RESULT_FILE_EXTENSION, true);
         this.bufferedResultWriter = new BufferedWriter(resultsFile);
     }
 

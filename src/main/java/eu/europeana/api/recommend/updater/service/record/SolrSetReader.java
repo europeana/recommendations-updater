@@ -90,7 +90,8 @@ public class SolrSetReader implements Tasklet, StepExecutionListener {
                 .setFacet(true)
                 .setFacetLimit(MAX_NUMBER_SETS) // set very high so we can get all sets (about 2200 atm) in 1 go
                 .setFacetMinCount(1) // avoid listing empty or not-modified sets
-                .addFacetField(DATASET_NAME);
+                .addFacetField(DATASET_NAME)
+                .addFilterQuery("!contentTier:0");
         if (date != null) {
             String fromString = date.toInstant().atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
             LOG.debug("Filtering sets updated after {}", fromString);
