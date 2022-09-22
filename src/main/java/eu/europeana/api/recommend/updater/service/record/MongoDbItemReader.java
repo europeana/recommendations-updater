@@ -6,6 +6,7 @@ import eu.europeana.api.recommend.updater.config.UpdaterSettings;
 import eu.europeana.api.recommend.updater.model.record.Record;
 import eu.europeana.api.recommend.updater.util.AverageTime;
 import eu.europeana.api.recommend.updater.util.ProgressLogger;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.batch.core.ExitStatus;
@@ -49,6 +50,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
     private final UpdaterSettings settings;
     private final MongoService mongoService;
     private final FileWriter resultsFile;
+    private final String resultsFileName;
     private final BufferedWriter bufferedResultWriter;
 
     private Date updateStart; // to check if records were modified during the update
@@ -74,8 +76,12 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
         this.mongoService = mongoService;
         this.averageTime = new AverageTime(settings.getLogTimingInterval(), "reading from Mongo");
 
-        this.resultsFile = new FileWriter(RESULT_FILE_NAME +
-                "-" + settings.getMilvusCollection() + RESULT_FILE_EXTENSION, true);
+        if (StringUtils.isBlank(settings.getMilvusCollection())) {
+            this.resultsFileName = RESULT_FILE_NAME + RESULT_FILE_EXTENSION;
+        } else {
+            this.resultsFileName = RESULT_FILE_NAME + "-" + settings.getMilvusCollection() + RESULT_FILE_EXTENSION;
+        }
+        this.resultsFile = new FileWriter(resultsFileName, true);
         this.bufferedResultWriter = new BufferedWriter(resultsFile);
     }
 
@@ -221,7 +227,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
             bufferedResultWriter.newLine();
             bufferedResultWriter.flush();
         } catch (IOException e) {
-            LOG.error("Error writing to result file {}", RESULT_FILE_NAME, e);
+            LOG.error("Error writing to result file {}", this.resultsFileName, e);
         }
     }
 
