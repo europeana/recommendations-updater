@@ -212,7 +212,7 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
             if (webClient == null) {
                 int sleepTime = RETRY_GET_CLIENT_WAIT_TIME * nrTries;
                 LOG.warn("All Embeddings API instances are in use. Waiting {} sec ...", sleepTime);
-                webClient.wait(sleepTime * MS_PER_SEC); // wait some extra time before we try again
+                webClients.wait(sleepTime * MS_PER_SEC); // wait some extra time before we try again
                 nrTries++;
             }
         }

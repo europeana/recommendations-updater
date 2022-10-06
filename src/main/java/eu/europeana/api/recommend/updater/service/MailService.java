@@ -72,6 +72,7 @@ public class MailService implements JobExecutionListener {
         }
     }
 
+    @SuppressWarnings("fb-contrib:MDM_INETADDRESS_GETLOCALHOST") // not important, won't expose this info to the outside
     private String getHostName() {
         try {
             return InetAddress.getLocalHost().getHostName();
