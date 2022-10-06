@@ -29,7 +29,7 @@ public class EmbeddingRecordFileWriter extends FlatFileItemWriterBuilder<List<Em
             "places",
             "times"
     };
-    private static final String DELIMITER = ";";
+    private static final char DELIMITER = ';';
 
     private final String fileName;
     private final int batchSize;
@@ -55,7 +55,7 @@ public class EmbeddingRecordFileWriter extends FlatFileItemWriterBuilder<List<Em
     }
 
     private FlatFileHeaderCallback createHeaderCallBack() {
-        return writer -> writer.write(String.join(DELIMITER, FIELDS_TO_WRITE));
+        return writer -> writer.write(String.join(String.valueOf(DELIMITER), FIELDS_TO_WRITE));
     }
 
     @SuppressWarnings("java:S109")
@@ -70,7 +70,7 @@ public class EmbeddingRecordFileWriter extends FlatFileItemWriterBuilder<List<Em
                         .append(arrayToString(embeddingRecord.getTags())).append(DELIMITER)
                         .append(arrayToString(embeddingRecord.getPlaces())).append(DELIMITER)
                         .append(arrayToString(embeddingRecord.getTimes()))
-                        .append("\n");
+                        .append('\n');
             }
             if (s.length() > 0) {
                 // remove last newline
