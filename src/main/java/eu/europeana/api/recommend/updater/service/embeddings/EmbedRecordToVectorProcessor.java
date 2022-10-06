@@ -160,13 +160,7 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
                     LOG.trace("3. Generated {} vectors in {} ms", result.size(), duration);
                 }
             } catch (RuntimeException e) {
-                String setName;
-                if (embeddingRecords.isEmpty()) {
-                    setName = "unknown - empty list of embeddings records!";
-                } else {
-                    setName = getSetName(embeddingRecords.get(0));
-                }
-
+                String setName = getSetName(embeddingRecords);
                 int sleepTime = RETRY_GET_VECTOR_WAIT_TIME * nrTries;
                 LOG.warn("Request to Embeddings API for set {} failed after {} ms with error {} and cause {}. " +
                                 "Attempt {}, will retry in {} seconds",  setName, System.currentTimeMillis() - start,
@@ -181,6 +175,13 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
             nrTries++;
         }
         return result;
+    }
+
+    private String getSetName(List<EmbeddingRecord> embeddingRecords) {
+        if (embeddingRecords.isEmpty()) {
+            return "unknown - empty list of embeddings records!";
+        }
+        return getSetName(embeddingRecords.get(0));
     }
 
     private String getSetName(EmbeddingRecord embeddingRecord) {

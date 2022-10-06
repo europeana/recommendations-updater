@@ -8,9 +8,7 @@ import org.apache.logging.log4j.Logger;
  */
 public class StringLimitUtils {
 
-    private static final Logger LOG = LogManager.getLogger(StringLimitUtils.class);
-
-    private void StringLimitUtils() {
+    private StringLimitUtils() {
         // empty constructor to prevent initialization
     }
 

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
+import java.util.Locale;
 
 /**
  * Sends an email when the update finished
@@ -26,6 +27,11 @@ public class MailService implements JobExecutionListener {
     private JavaMailSender mailSender;
     private String mailTo;
 
+    /**
+     * Setup new Mail service
+     * @param mailSender auto-wired Java mail sender
+     * @param settings auto-wired settings
+     */
     public MailService(JavaMailSender mailSender, UpdaterSettings settings) {
         this.mailSender = mailSender;
         this.mailTo = settings.getMailTo();
@@ -46,14 +52,13 @@ public class MailService implements JobExecutionListener {
             message.setFrom(FROM);
             message.setTo(mailTo);
 
-            SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm");
+            SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault());
             String text = "Recommendations Updater running on " + getHostName()
                     + " finished with status " + jobExecution.getExitStatus().getExitCode();
             message.setSubject(text);
 
             StringBuilder s = new StringBuilder(text);
-            s.append("\n")
-                    .append("Time: " + sdf.format(jobExecution.getEndTime()));
+            s.append("\nTime: " + sdf.format(jobExecution.getEndTime()));
             for (Throwable t : jobExecution.getAllFailureExceptions()) {
                 s.append("\nError: ");
                 Throwable cause = t.getCause();

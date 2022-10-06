@@ -148,7 +148,7 @@ public class JobCmdLineStarter implements ApplicationRunner {
         StringBuilder setIds = new StringBuilder();
         for (String setName : setNames) {
             // keep only setId
-            setIds.append(SetUtils.datasetNameToId(setName)).append(",");
+            setIds.append(SetUtils.datasetNameToId(setName)).append(',');
         }
         // remove last trailing comma
         setIds.deleteCharAt(setIds.length() - 1);
@@ -170,6 +170,7 @@ public class JobCmdLineStarter implements ApplicationRunner {
         jobParamBuilder.addString(JobData.SETS_KEY, setIds);
     }
 
+    @SuppressWarnings("findsecbugs:PATH_TRAVERSAL_IN") // not an issue, users are always trusted
     private String readSetsFile(String fileName) throws ConfigurationException {
         File file = new File(fileName);
         if (!file.exists()) {
@@ -201,7 +202,7 @@ public class JobCmdLineStarter implements ApplicationRunner {
                     LOG.error("Unable to parse set id in line {}: {}", i, line);
                 }
                 if (result.length() > 0) {
-                    result.append(",");
+                    result.append(',');
                 }
                 result.append(setId);
             } else {

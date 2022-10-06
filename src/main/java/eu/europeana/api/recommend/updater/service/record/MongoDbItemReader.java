@@ -21,10 +21,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
@@ -70,7 +67,9 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
      * Create new ItemReader that reads records from MongoDb
      * @param settings inject application settings bean
      * @param mongoService inject mongo service bean
+     * @throws IOException when there's a problem creating new results file
      */
+    @SuppressWarnings("findsecbugs:PATH_TRAVERSAL_IN") // false warning and not an issue
     public MongoDbItemReader(UpdaterSettings settings, MongoService mongoService) throws IOException {
         this.settings = settings;
         this.mongoService = mongoService;
@@ -219,7 +218,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
      */
     private synchronized void writeResultToFile(SetInProgress setData, Date dateDone) {
         try {
-            DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
+            DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.getDefault());
             bufferedResultWriter.write(setData.setId + SEPARATOR
                     + setData.itemsRead + SEPARATOR
                     + df.format(setData.started) + SEPARATOR
@@ -297,6 +296,9 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
 
     }
 
+    /**
+     * Make sure we write sets in progress to file and close everything
+     */
     @PreDestroy
     public void shutDown() {
         // Try to write to file in case the application is shutdown because of kill signal or of error
