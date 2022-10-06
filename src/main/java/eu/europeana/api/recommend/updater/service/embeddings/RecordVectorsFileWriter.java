@@ -23,7 +23,7 @@ public class RecordVectorsFileWriter extends FlatFileItemWriterBuilder<List<Reco
             "id",
             "embedding"
     };
-    private static final String DELIMITER = ";";
+    private static final char DELIMITER = ';';
 
     private final String fileName;
     private final int batchSize;
@@ -49,7 +49,7 @@ public class RecordVectorsFileWriter extends FlatFileItemWriterBuilder<List<Reco
     }
 
     private FlatFileHeaderCallback createHeaderCallBack() {
-        return writer -> writer.write(String.join(DELIMITER, FIELDS_TO_WRITE));
+        return writer -> writer.write(String.join(String.valueOf(DELIMITER), FIELDS_TO_WRITE));
     }
 
     private LineAggregator<List<RecordVectors>> createLineAggregator() {
@@ -58,7 +58,7 @@ public class RecordVectorsFileWriter extends FlatFileItemWriterBuilder<List<Reco
             for (RecordVectors recordVectors : list) {
                 s.append(recordVectors.getId()).append(DELIMITER)
                         .append(arrayToString(recordVectors.getEmbedding()))
-                        .append("\n");
+                        .append('\n');
             }
             // remove last newline
             s.deleteCharAt(s.length() - 1);

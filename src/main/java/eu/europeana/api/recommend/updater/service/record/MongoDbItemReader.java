@@ -104,7 +104,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
         } else {
             StringBuilder s = new StringBuilder();
             for (String setId : setsToDo) {
-                s.append("^/").append(setId).append("/").append("|");
+                s.append("^/").append(setId).append('/').append('|');
             }
             String setsRegex = s.substring(0, s.length() - 1);
             totalItemsToRead = mongoService.countAllAboutRegex(setsRegex);
