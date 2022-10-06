@@ -1,12 +1,9 @@
 package eu.europeana.api.recommend.updater.util;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 /**
  * Utility class to truncate String, but keep entire words
  */
-public class StringLimitUtils {
+public final class StringLimitUtils {
 
     private StringLimitUtils() {
         // empty constructor to prevent initialization

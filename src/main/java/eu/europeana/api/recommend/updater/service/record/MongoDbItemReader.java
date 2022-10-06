@@ -69,7 +69,7 @@ public class MongoDbItemReader extends AbstractItemCountingItemStreamItemReader<
      * @param mongoService inject mongo service bean
      * @throws IOException when there's a problem creating new results file
      */
-    @SuppressWarnings("findsecbugs:PATH_TRAVERSAL_IN") // false warning and not an issue
+    @SuppressWarnings("findsecbugs:PATH_TRAVERSAL_OUT") // false warning and not an issue
     public MongoDbItemReader(UpdaterSettings settings, MongoService mongoService) throws IOException {
         this.settings = settings;
         this.mongoService = mongoService;
