@@ -1,7 +1,5 @@
 package eu.europeana.api.recommend.updater.model.record;
 
-import org.springframework.data.annotation.Id;
-
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;

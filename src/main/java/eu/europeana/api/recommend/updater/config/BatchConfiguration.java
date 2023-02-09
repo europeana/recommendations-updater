@@ -100,6 +100,10 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
         this.taskExecutor = simpleTaskExecutor;
     }
 
+    /**
+     *  Set-up in-memory Spring Batch data source
+     * @param dataSource
+     */
     @Override
     public void setDataSource(DataSource dataSource) {
         // at the moment we do not store spring-batch process data in a database, so no recovery is possible
@@ -136,6 +140,10 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
         return new RecordVectorsFileWriter(settings.getTestFile(), settings.getBatchSize()).build();
     }
 
+    /**
+     * Step1: Read all sets from Solr (or skip this if we have sets provided on the command-line)
+     * @return
+     */
     @Bean
     public Step step1() {
         return stepBuilderFactory.get("step1")
@@ -143,6 +151,10 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
                 .build();
     }
 
+    /**
+     * Step2: do actual processing per set
+     * @return
+     */
     @Bean
     public Step step2() {
         if (UpdaterSettings.isValueDefined(settings.getEmbeddingsApiUrl())
@@ -181,6 +193,12 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
                 .build();
     }
 
+    /**
+     * Basic Spring Batch update flow
+     * @param step1
+     * @param step2
+     * @return
+     */
     @Bean
     public Job updateJob(Step step1, Step step2) {
         return jobBuilderFactory.get("updateJob")

@@ -218,19 +218,38 @@ public class JobCmdLineStarter implements ApplicationRunner {
         jobParametersBuilder.addString(JobData.DELETE_DB, "true");
     }
 
-
+    /**
+     * Process --FULL parameter
+     * @param jobParameters command-line parameters
+     * @return true if command-line parameter --FULL was provided
+     */
     public static boolean isFullUpdate(JobParameters jobParameters) {
         return PARAM_UPDATE_FULL.equalsIgnoreCase(jobParameters.getString(JobData.UPDATETYPE_KEY));
     }
 
+    /**
+     * Process --from parameter
+     * @param jobParameters command-line parameters
+     * @return Date provided on command-line
+     */
     public static Date getFromDate(JobParameters jobParameters) {
         return jobParameters.getDate(JobData.FROM_KEY);
     }
 
+    /**
+     * Process --DELETE parameter
+     * @param jobParameters command-line parameters
+     * @return true if command-line parameter --DELETE was provided
+     */
     public static boolean isDeleteDb(JobParameters jobParameters) {
         return Boolean.parseBoolean(jobParameters.getString(JobData.DELETE_DB));
     }
 
+    /**
+     * Process --sets parameter
+     * @param jobParameters command-line parameters
+     * @return list of setIds as defined in provided job parameters
+     */
     public static List<String> getSetsToProcess(JobParameters jobParameters) {
         String sets = jobParameters.getString(JobData.SETS_KEY);
         if (StringUtils.isBlank(sets)) {
