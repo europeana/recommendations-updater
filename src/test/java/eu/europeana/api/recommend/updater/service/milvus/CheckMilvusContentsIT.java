@@ -70,7 +70,7 @@ public class CheckMilvusContentsIT {
                     .build()));
             int p = 0;
             for (String partition : partitionsResponse.getData().getPartitionNamesList()) {
-                LOG.info(partition);
+                LOG.info("  {}", partition);
                 p++;
                 if (p == 100) {
                     LOG.info("Only listing first 100 partitions");
@@ -155,6 +155,17 @@ public class CheckMilvusContentsIT {
 //    public void createCollection() {
 //        MilvusClient milvusClient = setup();
 //        MilvusUtils.createCollection(milvusClient, TEST_COLLECTION, "Test collection", TEST_COLLECTION + INDEX_SUFFIX);
+//    }
+//
+//    @Disabled("Only enable this when deleting a partition manually")
+//    @Test
+//    public void deletePartition() {
+//        MilvusClient milvusClient = setup();
+//        String partitionToDelete = "92087";
+//        LOG.info(MilvusUtils.checkResponse(milvusClient.dropPartition(DropPartitionParam.newBuilder()
+//                        .withCollectionName(TEST_COLLECTION)
+//                        .withPartitionName(partitionToDelete)
+//                        .build()), "Error removing partition " + partitionToDelete));
 //    }
 //
 //    @Disabled("Only enable this when deleting a new collection manually")

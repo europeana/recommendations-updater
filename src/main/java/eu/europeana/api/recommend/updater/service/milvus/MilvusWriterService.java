@@ -15,6 +15,7 @@ import io.milvus.param.collection.GetCollectionStatisticsParam;
 import io.milvus.param.dml.InsertParam;
 import io.milvus.param.highlevel.collection.ListCollectionsParam;
 import io.milvus.param.highlevel.collection.response.ListCollectionsResponse;
+import io.milvus.param.partition.CreatePartitionParam;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.batch.core.JobExecution;
@@ -46,6 +47,7 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
 
     private boolean isFullUpdate;
     private MilvusClient milvusClient;
+    private Set<String> partitionsExist = new HashSet<>(); // to keep track which sets (partitions) are present in Milvus collection
     private AverageTime averageTimeMilvus;  // for debugging purposes
 
 
@@ -104,8 +106,8 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
                 LOG.info("Found collection {} containing {} entries", collectionName, nrEntities);
 
                 if (settings.useMilvusPartitions()) {
-                    Set<String> partitionNames = new HashSet<>(MilvusUtils.getPartitions(milvusClient, collectionName));
-                    LOG.info("Found {} partitions", partitionNames.size());
+                    this.partitionsExist = new HashSet<>(MilvusUtils.getPartitions(milvusClient, collectionName));
+                    LOG.info("Found {} partitions", partitionsExist.size());
                 }
             }
         } else {
@@ -190,8 +192,19 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
         InsertParam.Builder insertBuilder = InsertParam.newBuilder()
                 .withCollectionName(collectionName)
                 .withFields(fields);
-        if (setName != null) {
+        if (settings.useMilvusPartitions() && setName != null) {
             // Keep in mind that there is a 4096 partition limit (see also https://milvus.io/docs/create_collection.md)
+
+            // Do we need to create a new partition first?
+            if (!partitionsExist.contains(setName)) {
+                LOG.debug("Creating new milvus partition {}", setName);
+                MilvusUtils.checkResponse(milvusClient.createPartition(CreatePartitionParam.newBuilder()
+                        .withCollectionName(collectionName)
+                        .withPartitionName(setName)
+                        .build()), "Error creating new partition for set " + setName);
+                partitionsExist.add(setName);
+            }
+
             insertBuilder.withPartitionName(setName);
         }
         MilvusUtils.checkResponse(milvusClient.insert(insertBuilder.build()), "Error writing data");
