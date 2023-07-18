@@ -29,7 +29,7 @@ import java.util.*;
  * (indicated by the --FULL parameter) or a partial update (which requires a 'from' parameter with a date
  * selecting all records that were created or updated after this date).
  *
- * Additionally the --DELETE option can be provided which deletes any existing Milvus (and LMDB) data.
+ * Additionally the --DELETE option can be provided which deletes any existing Milvus data.
  *
  * @author Patrick Ehlert
  */

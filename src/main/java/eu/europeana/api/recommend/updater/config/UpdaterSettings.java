@@ -44,11 +44,11 @@ public class UpdaterSettings {
     private Integer milvusPort;
     @Value("${milvus.collection:}")
     private String milvusCollection;
-    @Value("${milvus.usePartitions:false}")
-    private Boolean useMilvusPartitions;
 
-    @Value("${lmdb.folder}")
-    private String lmdbFolder;
+    @Value("${milvus.collectionDescription:}")
+    private String milvusCollectionDescription;
+    @Value("${milvus.usePartitions:false}")
+    private boolean useMilvusPartitions;
 
     @Value("${test.file:}")
     private String testFile;
@@ -71,7 +71,6 @@ public class UpdaterSettings {
         LOG.info("    Reduce = {}", EmbeddingRequestData.REDUCE);
         LOG.info("  Milvus {} at {}", milvusUrl, milvusCollection);
         LOG.info("    Milvus use partitions = {}", useMilvusPartitions);
-        LOG.info("  LMDB folder = {}", lmdbFolder);
         LOG.info("  Test file {}", testFile);
 
         if (isValueDefined(milvusUrl)) {
@@ -131,16 +130,16 @@ public class UpdaterSettings {
         return milvusCollection;
     }
 
+    public String getMilvusCollectionDescription() {
+        return milvusCollectionDescription;
+    }
+
     /**
      *
      * @return if true then milvus should create a partition for each set
      */
-    public Boolean useMilvusPartitions() {
+    public boolean useMilvusPartitions() {
         return useMilvusPartitions;
-    }
-
-    public String getLmdbFolder() {
-        return lmdbFolder;
     }
 
     public String getTestFile() {

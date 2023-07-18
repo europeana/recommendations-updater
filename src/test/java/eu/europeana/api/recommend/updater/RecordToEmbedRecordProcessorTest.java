@@ -3,6 +3,7 @@ package eu.europeana.api.recommend.updater;
 import eu.europeana.api.recommend.updater.config.UpdaterSettings;
 import eu.europeana.api.recommend.updater.model.embeddings.EmbeddingRecord;
 import eu.europeana.api.recommend.updater.model.record.*;
+import eu.europeana.api.recommend.updater.model.record.Record;
 import eu.europeana.api.recommend.updater.service.record.RecordToEmbedRecordProcessor;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;

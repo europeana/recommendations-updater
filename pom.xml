@@ -7,28 +7,29 @@
     <parent>
         <groupId>eu.europeana</groupId>
         <artifactId>europeana-parent-pom</artifactId>
-        <version>2.4-SNAPSHOT</version>
+        <version>2.4</version>
     </parent>
 
     <groupId>eu.europeana.api</groupId>
     <artifactId>recommendations-updater</artifactId>
-    <version>1.0.2-SNAPSHOT</version>
+    <version>1.1.0-SNAPSHOT</version>
     <packaging>war</packaging>
 
     <name>Recommendation Engine Updater</name>
     <description>Load CHO data from main Europeana database and generates vectors for the Recommendation Engine</description>
 
     <properties>
-        <java.version>11</java.version>
+        <java.version>17</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
 
-        <spring-boot.version>2.5.7</spring-boot.version>
-        <mongo.driver.version>3.12.10</mongo.driver.version>
-        <mongo.snappy.version>1.1.8.4</mongo.snappy.version>
-        <solrj.version>8.11.1</solrj.version>
-        <commons.lang.version>3.9</commons.lang.version>
-        <swagger.version>3.0.0</swagger.version>
+        <spring-boot.version>2.7.13</spring-boot.version>
+        <mongo.driver.version>3.12.14</mongo.driver.version>
+        <mongo.snappy.version>1.1.10.2</mongo.snappy.version>
+        <solrj.version>9.2.1</solrj.version>
+        <commons.lang.version>3.12.0</commons.lang.version>
+
+        <milvus.version>2.2.9</milvus.version>
     </properties>
 
     <dependencyManagement>
@@ -99,11 +100,6 @@
                     <artifactId>slf4j-api</artifactId>
                     <groupId>org.slf4j</groupId>
                 </exclusion>
-                <!-- TODO Fix weird issue, we can exclude woodstox and run the application, but then the ContextLoad unit test fails -->
-<!--                <exclusion>-->
-<!--                    <artifactId>stax2-api</artifactId>-->
-<!--                    <groupId>org.codehaus.woodstox</groupId>-->
-<!--                </exclusion>-->
             </exclusions>
         </dependency>
 
@@ -128,23 +124,6 @@
         </dependency>
 
         <dependency>
-            <groupId>io.springfox</groupId>
-            <artifactId>springfox-boot-starter</artifactId>
-            <version>${swagger.version}</version>
-            <exclusions>
-                <exclusion>
-                    <artifactId>slf4j-api</artifactId>
-                    <groupId>org.slf4j</groupId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>io.springfox</groupId>
-            <artifactId>springfox-swagger-ui</artifactId>
-            <version>${swagger.version}</version>
-        </dependency>
-
-        <dependency>
             <groupId>eu.europeana.api.commons</groupId>
             <artifactId>commons-error</artifactId>
             <version>0.2.11</version>
@@ -154,20 +133,14 @@
         <dependency>
             <groupId>org.owasp.encoder</groupId>
             <artifactId>encoder</artifactId>
-            <version>1.2.2</version>
+            <version>1.2.3</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/io.milvus/milvus-sdk-java -->
         <dependency>
             <groupId>io.milvus</groupId>
             <artifactId>milvus-sdk-java</artifactId>
-            <version>0.8.5</version>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/org.lmdbjava/lmdbjava -->
-        <dependency>
-            <groupId>org.lmdbjava</groupId>
-            <artifactId>lmdbjava</artifactId>
-            <version>0.8.2</version>
+            <version>${milvus.version}</version>
         </dependency>
 
         <dependency>
@@ -201,7 +174,7 @@
         <dependency>
             <groupId>io.github.hakky54</groupId>
             <artifactId>logcaptor</artifactId>
-            <version>2.7.8</version>
+            <version>2.9.0</version>
             <scope>test</scope>
         </dependency>
 
