@@ -5,6 +5,7 @@ import io.milvus.client.MilvusServiceClient;
 import io.milvus.grpc.*;
 import io.milvus.param.ConnectParam;
 import io.milvus.param.R;
+import io.milvus.param.collection.DescribeCollectionParam;
 import io.milvus.param.collection.GetCollectionStatisticsParam;
 import io.milvus.param.collection.LoadCollectionParam;
 import io.milvus.param.collection.ReleaseCollectionParam;
@@ -21,6 +22,7 @@ import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -53,10 +55,19 @@ public class CheckMilvusContentsIT {
 
     private boolean testCollectionAvailable(MilvusClient milvusClient) {
         LOG.info("Checking collections...");
-        R<ListCollectionsResponse> response = MilvusUtils.checkResponse(milvusClient.listCollections(ListCollectionsParam.newBuilder().build()));
-        List<String> collectionNames = response.getData().collectionNames;
+        R<ListCollectionsResponse> responseList = MilvusUtils.checkResponse(milvusClient.listCollections(ListCollectionsParam.newBuilder().build()));
+        List<String> collectionNames = responseList.getData().collectionNames;
         LOG.info("Available collections are: {}", collectionNames);
-        return collectionNames.contains(TEST_COLLECTION);
+        boolean result = collectionNames.contains(TEST_COLLECTION);
+        if (result) {
+            R<DescribeCollectionResponse> responseDescribe = MilvusUtils.checkResponse(milvusClient.describeCollection(DescribeCollectionParam.newBuilder()
+                            .withCollectionName(TEST_COLLECTION)
+                    .build()));
+            DescribeCollectionResponse r = responseDescribe.getData();
+            // TODO no method to retrieve the collection's description!?
+            LOG.info("Collection {} was created on {}", r.getCollectionName(), new Date(r.getCreatedUtcTimestamp()));
+        }
+        return result;
     }
 
     @Test
