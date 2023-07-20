@@ -186,8 +186,8 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
         }
 
         List<InsertParam.Field> fields = new ArrayList<>();
-        fields.add(new InsertParam.Field(MilvusUtils.RECORD_ID_KEY, ids));
-        fields.add(new InsertParam.Field(MilvusUtils.VECTOR_VALUE, vectors));
+        fields.add(new InsertParam.Field(Constants.RECORD_ID_FIELD_NAME, ids));
+        fields.add(new InsertParam.Field(Constants.VECTOR_FIELD_NAME, vectors));
 
         InsertParam.Builder insertBuilder = InsertParam.newBuilder()
                 .withCollectionName(collectionName)

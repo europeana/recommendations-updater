@@ -6,7 +6,6 @@ import io.milvus.client.MilvusClient;
 import io.milvus.grpc.DataType;
 import io.milvus.grpc.ShowPartitionsResponse;
 import io.milvus.param.IndexType;
-import io.milvus.param.MetricType;
 import io.milvus.param.R;
 import io.milvus.param.collection.CreateCollectionParam;
 import io.milvus.param.collection.DropCollectionParam;
@@ -26,9 +25,6 @@ import java.util.List;
  */
 public final class MilvusUtils {
 
-    public static final int COLLECTION_DIMENSION = 300;
-    public static final String RECORD_ID_KEY = "about";
-    public static final String VECTOR_VALUE = "vector";
     private static final Logger LOG = LogManager.getLogger(MilvusUtils.class);
 
     private MilvusUtils() {
@@ -70,17 +66,17 @@ public final class MilvusUtils {
      */
     public static void createCollection(MilvusClient milvusClient, String collectionName, String collectionDescription, String indexName) {
         FieldType fieldType1 = FieldType.newBuilder()
-                .withName(RECORD_ID_KEY)
+                .withName(Constants.RECORD_ID_FIELD_NAME)
                 .withDescription("record id")
                 .withDataType(DataType.VarChar)
                 .withMaxLength(Record.MAX_RECORD_ID_LENGTH)
                 .withPrimaryKey(true)
                 .build();
         FieldType fieldType2 = FieldType.newBuilder()
-                .withName(VECTOR_VALUE)
+                .withName(Constants.VECTOR_FIELD_NAME)
                 .withDescription("record embedding")
                 .withDataType(DataType.FloatVector)
-                .withDimension(COLLECTION_DIMENSION)
+                .withDimension(Constants.VECTOR_DIMENSION)
                 .build();
 
         LOG.info("Creating Milvus collection {}...", collectionName);
@@ -95,10 +91,10 @@ public final class MilvusUtils {
             LOG.info("Creating index for collection {}...", collectionName);
             LOG.info(checkResponse(milvusClient.createIndex(CreateIndexParam.newBuilder()
                     .withCollectionName(collectionName)
-                    .withFieldName(VECTOR_VALUE)
+                    .withFieldName(Constants.VECTOR_FIELD_NAME)
                     .withIndexName(indexName)
                     .withIndexType(IndexType.IVF_SQ8) // copied from original code by Pangeanic
-                    .withMetricType(MetricType.L2) // not sure, using L2 for now
+                    .withMetricType(Constants.INDEX_METRIC_TYPE) // not sure, using L2 for now
                     .withExtraParam("{\"nlist\": 16384}") // copied from original code by Pangeanic
                     //.withSyncMode(Boolean.TRUE) // not sure, not setting for now
                     .build()), "Error creating index" + indexName));
@@ -145,16 +141,10 @@ public final class MilvusUtils {
      * @param collectionName
      */
     public static void deleteCollection(MilvusClient milvusClient, String collectionName) {
-//        LOG.info("Deleting index for collection {}");
-//        R<RpcStatus> responseIndex = checkResponse(milvusClient.dropIndex(DropIndexParam.newBuilder()
-//                .withCollectionName(TEST_COLLECTION)
-//                .withIndexName(TEST_COLLECTION + INDEX_SUFFIX)
-//                .build());
-//        LOG.info(responseIndex);
-
         LOG.info("Dropping Milvus collection {}...", collectionName);
         LOG.info(checkResponse(milvusClient.dropCollection(DropCollectionParam.newBuilder()
                 .withCollectionName(collectionName)
                 .build())));
     }
+
 }

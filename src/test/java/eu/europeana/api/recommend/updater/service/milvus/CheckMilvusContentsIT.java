@@ -4,12 +4,14 @@ import io.milvus.client.MilvusClient;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.grpc.*;
 import io.milvus.param.ConnectParam;
+import io.milvus.param.Constant;
 import io.milvus.param.R;
 import io.milvus.param.collection.DescribeCollectionParam;
 import io.milvus.param.collection.GetCollectionStatisticsParam;
 import io.milvus.param.collection.LoadCollectionParam;
 import io.milvus.param.collection.ReleaseCollectionParam;
 import io.milvus.param.dml.QueryParam;
+import io.milvus.param.dml.SearchParam;
 import io.milvus.param.highlevel.collection.ListCollectionsParam;
 import io.milvus.param.highlevel.collection.response.ListCollectionsResponse;
 import io.milvus.param.highlevel.dml.GetIdsParam;
@@ -17,6 +19,7 @@ import io.milvus.param.highlevel.dml.response.GetResponse;
 import io.milvus.param.index.GetIndexStateParam;
 import io.milvus.param.partition.ShowPartitionsParam;
 import io.milvus.response.QueryResultsWrapper;
+import io.milvus.response.SearchResultsWrapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Disabled;
@@ -106,8 +109,8 @@ public class CheckMilvusContentsIT {
             loadCollection(milvusClient, TEST_COLLECTION);
             R<QueryResults> results = MilvusUtils.checkResponse(milvusClient.query(QueryParam.newBuilder()
                             .withCollectionName(TEST_COLLECTION)
-                            .withOutFields(List.of(MilvusUtils.RECORD_ID_KEY, MilvusUtils.VECTOR_VALUE))
-                            .withExpr(MilvusUtils.RECORD_ID_KEY + " like '%'")
+                            .withOutFields(List.of(Constants.RECORD_ID_FIELD_NAME, Constants.VECTOR_FIELD_NAME))
+                            .withExpr(Constants.RECORD_ID_FIELD_NAME + " like '%'")
                             .withLimit(10L)
                     .build()));
             StringArray ids = results.getData().getFieldsData(0).getScalars().getStringData();
@@ -118,7 +121,7 @@ public class CheckMilvusContentsIT {
             for (int i = 0; i < 10; i++) {
                 StringBuilder vector = new StringBuilder().append(vectors.getData(v)).append(',');
                 v++;
-                while (v % MilvusUtils.COLLECTION_DIMENSION != 0) {
+                while (v % Constants.VECTOR_DIMENSION != 0) {
                     vector.append(vectors.getData(v)).append(',');
                     v++;
                 }
@@ -128,6 +131,7 @@ public class CheckMilvusContentsIT {
         } else {
             LOG.warn("Test collection {} is not available", TEST_COLLECTION);
         }
+        milvusClient.close();
     }
     private void loadCollection(MilvusClient milvusClient, String colletionName) {
         MilvusUtils.checkResponse(milvusClient.loadCollection(LoadCollectionParam.newBuilder()
@@ -159,6 +163,47 @@ public class CheckMilvusContentsIT {
         }
 
         releaseCollection(milvusClient, TEST_COLLECTION);
+        milvusClient.close();
+    }
+
+    /**
+     * Given a particular record ID, find the 3 records that are most similar (see also https://milvus.io/docs/search.md)
+     */
+    @Test
+    public void testGetSimilarRecords() {
+        MilvusClient milvusClient = setup();
+        loadCollection(milvusClient, TEST_COLLECTION);
+        String recordToSearch = "'08607/1270037'";
+
+        // get vector of record to compare
+        R<GetResponse> response = MilvusUtils.checkResponse(milvusClient.get(GetIdsParam.newBuilder()
+                .withCollectionName(TEST_COLLECTION)
+                .withPrimaryIds(List.of(recordToSearch))
+                .build()));
+        QueryResultsWrapper.RowRecord result = response.getData().getRowRecords().get(0);
+        List<Float> vectors = (List<Float>) result.get(Constants.VECTOR_FIELD_NAME);
+
+
+        SearchParam searchParam = SearchParam.newBuilder()
+                .withCollectionName(TEST_COLLECTION)
+                .withMetricType(Constants.INDEX_METRIC_TYPE) // has to match type in index
+                .withOutFields(List.of(Constants.RECORD_ID_FIELD_NAME))
+                .withTopK(3) // max 3 results
+                .withVectors(List.of(vectors))
+                .withVectorFieldName(Constants.VECTOR_FIELD_NAME)
+                .withExpr(Constants.RECORD_ID_FIELD_NAME + " != " + recordToSearch) // exclude the record itself
+                //.withParams(SEARCH_PARAM)
+                .withGuaranteeTimestamp(Constant.GUARANTEE_EVENTUALLY_TS) // don't care about consistency/propagating changes
+                .build();
+        SearchResultsWrapper data = new SearchResultsWrapper(milvusClient.search(searchParam).getData().getResults());
+        LOG.info("Retrieved {} items similar to record {}", data.getRowRecords().size(), recordToSearch);
+        for (int i = 0; i < data.getRowRecords().size(); i++) {
+            QueryResultsWrapper.RowRecord record = data.getRowRecords().get(i);
+            LOG.info("  {} has score {}", record.get(Constants.RECORD_ID_FIELD_NAME), record.get(Constants.MILVUS_SCORE_FIELD_NAME));
+        }
+
+        releaseCollection(milvusClient, TEST_COLLECTION);
+        milvusClient.close();
     }
 
 //    @Disabled("Only enable this when creating a new collection manually")
@@ -166,6 +211,7 @@ public class CheckMilvusContentsIT {
 //    public void createCollection() {
 //        MilvusClient milvusClient = setup();
 //        MilvusUtils.createCollection(milvusClient, TEST_COLLECTION, "Test collection", TEST_COLLECTION + INDEX_SUFFIX);
+//        milvusClient.close();
 //    }
 //
 //    @Disabled("Only enable this when deleting a partition manually")
@@ -177,6 +223,7 @@ public class CheckMilvusContentsIT {
 //                        .withCollectionName(TEST_COLLECTION)
 //                        .withPartitionName(partitionToDelete)
 //                        .build()), "Error removing partition " + partitionToDelete));
+//        milvusClient.close();
 //    }
 //
 //    @Disabled("Only enable this when deleting a new collection manually")
@@ -184,6 +231,7 @@ public class CheckMilvusContentsIT {
 //    public void deleteCollection() {
 //        MilvusClient milvusClient = setup();
 //        MilvusUtils.deleteCollection(milvusClient, TEST_COLLECTION);
+//        milvusClient.close();
 //    }
 
 }
