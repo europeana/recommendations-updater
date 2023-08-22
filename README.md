@@ -4,8 +4,7 @@ Spring-Boot2 and Spring-Batch web application for generating updates to the Reco
 
 The software retrieves set names and uses this to loads records (of a particular set) from a Mongo databases.
 Part of the record data is then send to the Embeddings API which returns vectors. The vectors are saved into a Milvus
-database. Since the used Milvus version doesn't support string keys, we store a mapping between recordIds and keys
-in a local LMDB database.
+database.
 
 ## Prerequisites
  * Java 11
@@ -14,7 +13,7 @@ in a local LMDB database.
  * Record Solr search engine
  * Record Mongo database
  * Embeddings API
- * Milvus Recommendation Engine
+ * Milvus Recommendation Engine (v2.2.x)
  * At least 90 GB free HDD space (for about 60 million records)
  
  <sup>* A Maven installation is recommended, but you could use the accompanying `mvnw` (Linux, Mac OS) or `mvnw.cmd` (Windows) 
@@ -42,7 +41,7 @@ One of the following command-line options is required:
 At the moment the 4 options cannot be combined.
 
 Optional extra command-line options are:
-  * `--DELETE` to delete the existing Milvus (and Lmdb) data before starting the update
+  * `--DELETE` to delete the existing Milvus data before starting the update
   * `--batch` to modify the batch size (overrides option in configuration file)
   * `--threads` to modify the number of threads (sets) that are updated in parallel (overrides option in configuration file)
 

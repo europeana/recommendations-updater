@@ -19,6 +19,9 @@ public class Record implements Serializable {
 
     private static final long serialVersionUID = 7041954999800826470L;
 
+    // To save space we only use the first 100 characters of a record id. This should uniquely identify a record
+    public static final int MAX_RECORD_ID_LENGTH = 100;
+
     @Id
     private ObjectId id;
     private String about;
@@ -38,11 +41,12 @@ public class Record implements Serializable {
     }
 
     /**
-     * In Milvus and LMDB the leading slash of a record's about field is not stored
+     * We shorten the stored about field to save space. The leading slash is removed and we only keep the first 100
+     * characters
      * @return record about field without leading slash
      */
-    public String getAboutWithoutLeadingSlash() {
-        return about.substring(1);
+    public String getTrimmedAbout() {
+        return about.substring(1, Math.min(about.length(), MAX_RECORD_ID_LENGTH + 1));
     }
 
     public void setAbout(String about) {

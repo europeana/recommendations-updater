@@ -9,9 +9,10 @@ public class MilvusStateException extends RuntimeException {
     /**
      * Initialise a new milvus state exception
      * @param msg error message
+     * @param e original exception (cause)
      */
-    public MilvusStateException(String msg) {
-        super(msg);
+    public MilvusStateException(String msg, Exception e) {
+        super(msg, e);
     }
 
 }

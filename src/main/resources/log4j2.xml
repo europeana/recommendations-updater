@@ -34,7 +34,7 @@
         <!-- Set to DEBUG to see average timing, set to TRACE to requests and responses -->
         <Logger name="eu.europeana.api.recommend.updater.service.embeddings.EmbedRecordToVectorProcessor" level="DEBUG"/>
 
-        <!-- Set to DEBUG to see average timing, set to TRACE to see requests sent to Milvus (and LMDB) -->
+        <!-- Set to DEBUG to see average timing, set to TRACE to see requests sent to Milvus -->
         <Logger name="eu.europeana.api.recommend.updater.service.milvus.MilvusWriterService" level="INFO"/>
 
         <!-- Required to see average time logs -->

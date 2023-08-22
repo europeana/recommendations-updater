@@ -8,7 +8,7 @@ import eu.europeana.api.recommend.updater.model.record.Record;
 import eu.europeana.api.recommend.updater.util.AverageTime;
 import eu.europeana.api.recommend.updater.util.StringLimitUtils;
 import eu.europeana.api.recommend.updater.util.UriUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.batch.item.ItemProcessor;
@@ -54,7 +54,7 @@ public class RecordToEmbedRecordProcessor implements ItemProcessor<List<Record>,
             entities.addAll(createEntityList(rec.getPlaces()));
             entities.addAll(createEntityList(rec.getTimespans()));
 
-            String id = rec.getAboutWithoutLeadingSlash();
+            String id = rec.getTrimmedAbout();
             Collection<String> title = new ArrayList<>();
             Collection<String> description = new ArrayList<>();
             Collection<String> creator = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);

@@ -27,9 +27,6 @@ build/
 ### VS Code ###
 .vscode/
 
-### LMDB files ###
-**/*.mdb
-
 ### Updater filed ###
 **/*.user.properties
 recommend_test_output.csv
