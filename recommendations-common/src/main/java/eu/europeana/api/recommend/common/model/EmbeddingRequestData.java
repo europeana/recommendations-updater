@@ -9,10 +9,14 @@ public class EmbeddingRequestData implements Serializable {
 
     private static final long serialVersionUID = 4063496522104140402L;
 
-    private final EmbeddingRecord[] records;
+    private EmbeddingRecord[] records;
 
     public EmbeddingRequestData(EmbeddingRecord[] records) {
         this.records = records;
+    }
+
+    private EmbeddingRequestData() {
+        // empty constructor for Jackson serialization
     }
 
     public EmbeddingRecord[] getRecords() {
