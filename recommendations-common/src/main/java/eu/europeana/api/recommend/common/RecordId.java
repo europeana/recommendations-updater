@@ -3,16 +3,22 @@ package eu.europeana.api.recommend.common;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.Objects;
+
 /**
  * In Milvus recordIds are stored a bit differently. To save space we don't store the leading slash and we only use
  * the first 100 characters of a record (these should uniquely identify a record).
  * This class saves the original Europeana record Id and can output the various parts and ways required.
  */
-public class RecordId {
+public class RecordId implements Serializable {
 
     public static final String SET_RECORD_ID_PREFIX = "http://data.europeana.eu/item/";
     public static final int MAX_SIZE = 100;
 
+    @Serial
+    private static final long serialVersionUID = 3143509414537273784L;
     private static final Logger LOG = LogManager.getLogger(RecordId.class);
 
     private final String dataSetId;
@@ -92,4 +98,20 @@ public class RecordId {
         return getMilvusId();
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        RecordId recordId = (RecordId) o;
+        return dataSetId.equals(recordId.dataSetId) && localId.equals(recordId.localId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(dataSetId, localId);
+    }
 }

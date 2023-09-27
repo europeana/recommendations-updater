@@ -15,14 +15,14 @@ public class EmbeddingRecord  implements Serializable {
     private static final long serialVersionUID = 8981198216794631059L;
 
     @NotNull
-    private final String id;
+    private String id;
     @NotNull
-    private final String[] title;
-    private final String[] description;
-    private final String[] creator;
-    private final String[] tags;
-    private final String[] places;
-    private final String[] times;
+    private String[] title;
+    private String[] description;
+    private String[] creator;
+    private String[] tags;
+    private String[] places;
+    private String[] times;
 
     /**
      * Create a new EmbeddingRecord object to send to Embeddings API
@@ -42,6 +42,10 @@ public class EmbeddingRecord  implements Serializable {
         this.tags = tags;
         this.places = places;
         this.times = times;
+    }
+
+    private EmbeddingRecord() {
+        // empty constructor for Jackson serialization
     }
 
     public String getId() {

@@ -11,8 +11,8 @@ public class EmbeddingResponse implements Serializable {
 
     private static final long serialVersionUID = -4582261765664352355L;
 
-    private RecordVectors[] data;
-    private String status;
+    protected RecordVectors[] data;
+    protected String status;
 
     public RecordVectors[] getData() {
         return data;

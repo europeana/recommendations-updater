@@ -3,6 +3,7 @@ package eu.europeana.api.recommend.common;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class RecordIdTest {
 
@@ -55,6 +56,13 @@ public class RecordIdTest {
     public void recordIdFromMilvusTest() {
         RecordId rId = new RecordId("0123x/test_2");
         assertEquals("/0123x/test_2", rId.getEuropeanaId());
+    }
+
+    @Test
+    public void recordIdEquals() {
+        RecordId rId1 = new RecordId("1", "2");
+        RecordId rId2 = new RecordId("1", "2");
+        assertTrue(rId1.equals(rId2));
     }
 
 }
