@@ -7,7 +7,7 @@ Part of the record data is then send to the Embeddings API which returns vectors
 database.
 
 ## Prerequisites
- * Java 11
+ * Java 17
  * Maven<sup>*</sup> 
  * [Europeana parent pom](https://github.com/europeana/europeana-parent-pom)
  * Record Solr search engine
