@@ -20,10 +20,18 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <milvus.version>2.2.12</milvus.version>
+        <milvus.version>2.3.1</milvus.version>
     </properties>
 
     <dependencies>
+        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-text -->
+        <!-- Temporarily added to prevent Milvus from using commons-text-1.6 with CVE-2022-42889 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+            <version>1.10.0</version>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/io.milvus/milvus-sdk-java -->
         <dependency>
             <groupId>io.milvus</groupId>

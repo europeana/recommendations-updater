@@ -66,7 +66,7 @@ public class RecordVectorsFileWriter extends FlatFileItemWriterBuilder<List<Reco
         };
     }
 
-    private String arrayToString(Float[] array) {
+    private String arrayToString(Double[] array) {
         return Arrays.stream(array)
                 .map(String::valueOf)
                 .collect(Collectors.joining(",", "", ""));

@@ -147,7 +147,7 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
     public void write(List<? extends List<RecordVectors>> lists) {
         String setName = null; // only used when writing to partitions
         List<String> milvusRecordIds = new ArrayList<>();
-        List<List<Float>> vectors = new ArrayList<>();
+        List<List<Double>> vectors = new ArrayList<>();
 
         // TODO check if loading a collection on startup increases performance also for writing -> https://milvus.io/docs/load_collection.md
         // first gather all recordIds and corresponding vectors
@@ -179,7 +179,7 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
         }
     }
 
-    private void writeToMilvus(String setName, List<String> ids, List<List<Float>> vectors) {
+    private void writeToMilvus(String setName, List<String> ids, List<List<Double>> vectors) {
         if (setName == null) {
             LOG.trace("Writing {} records to Milvus...", ids.size());
         } else {
