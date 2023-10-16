@@ -13,13 +13,13 @@ public class RecordVectors  implements Serializable {
     private static final long serialVersionUID = 5388995526375071859L;
 
     private String id; // required for serializing responses from Embeddings API
-    private Float[] embedding;
+    private Double[] embedding;
 
     public RecordVectors() {
         // Default constructor, required for Jackson deserialization
     }
 
-    public RecordVectors(String id, Float[] embedding) {
+    public RecordVectors(String id, Double[] embedding) {
         this.id = id;
         this.embedding = embedding;
     }
@@ -28,7 +28,7 @@ public class RecordVectors  implements Serializable {
         return id;
     }
 
-    public Float[] getEmbedding() {
+    public Double[] getEmbedding() {
         return embedding;
     }
 
