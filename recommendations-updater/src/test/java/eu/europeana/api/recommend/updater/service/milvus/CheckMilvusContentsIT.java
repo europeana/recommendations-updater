@@ -152,7 +152,7 @@ public class CheckMilvusContentsIT {
         MilvusClient milvusClient = setup();
         loadCollection(milvusClient, TEST_COLLECTION);
 
-        List<String> ids = List.of("'08607/799647'", "'08607/104637'", "'08607/799845'");
+        List<String> ids = List.of("08607/799647", "08607/104637", "08607/799845");
         R<GetResponse> response = MilvusUtils.checkResponse(milvusClient.get(GetIdsParam.newBuilder()
                         .withCollectionName(TEST_COLLECTION)
                         .withPrimaryIds(ids)
@@ -173,32 +173,35 @@ public class CheckMilvusContentsIT {
     public void testGetSimilarRecords() {
         MilvusClient milvusClient = setup();
         loadCollection(milvusClient, TEST_COLLECTION);
-        String recordToSearch = "'08607/1270037'";
+        String recordToSearch = "08607/243181";
 
         // get vector of record to compare
         R<GetResponse> response = MilvusUtils.checkResponse(milvusClient.get(GetIdsParam.newBuilder()
                 .withCollectionName(TEST_COLLECTION)
                 .withPrimaryIds(List.of(recordToSearch))
                 .build()));
-        QueryResultsWrapper.RowRecord result = response.getData().getRowRecords().get(0);
-        List<Float> vectors = (List<Float>) result.get(MilvusConstants.VECTOR_FIELD_NAME);
+        if (response.getData().getRowRecords().isEmpty()) {
+            LOG.error("No vector found for record {}", recordToSearch);
+        } else {
+            QueryResultsWrapper.RowRecord result = response.getData().getRowRecords().get(0);
+            List<Float> vectors = (List<Float>) result.get(MilvusConstants.VECTOR_FIELD_NAME);
 
-
-        SearchParam searchParam = SearchParam.newBuilder()
-                .withCollectionName(TEST_COLLECTION)
-                .withMetricType(MilvusConstants.INDEX_METRIC_TYPE) // has to match type in index
-                .withOutFields(List.of(MilvusConstants.RECORD_ID_FIELD_NAME))
-                .withTopK(3) // max 3 results
-                .withVectors(List.of(vectors))
-                .withVectorFieldName(MilvusConstants.VECTOR_FIELD_NAME)
-                .withExpr(MilvusConstants.RECORD_ID_FIELD_NAME + " != " + recordToSearch) // exclude the record itself
-                //.withParams(SEARCH_PARAM)
-                .build();
-        SearchResultsWrapper data = new SearchResultsWrapper(milvusClient.search(searchParam).getData().getResults());
-        LOG.info("Retrieved {} items similar to record {}", data.getRowRecords().size(), recordToSearch);
-        for (int i = 0; i < data.getRowRecords().size(); i++) {
-            QueryResultsWrapper.RowRecord record = data.getRowRecords().get(i);
-            LOG.info("  {} has score {}", record.get(MilvusConstants.RECORD_ID_FIELD_NAME), record.get(MilvusConstants.MILVUS_SCORE_FIELD_NAME));
+            SearchParam searchParam = SearchParam.newBuilder()
+                    .withCollectionName(TEST_COLLECTION)
+                    .withMetricType(MilvusConstants.INDEX_METRIC_TYPE) // has to match type in index
+                    .withOutFields(List.of(MilvusConstants.RECORD_ID_FIELD_NAME))
+                    .withTopK(3) // max 3 results
+                    .withVectors(List.of(vectors))
+                    .withVectorFieldName(MilvusConstants.VECTOR_FIELD_NAME)
+                    .withExpr(MilvusConstants.RECORD_ID_FIELD_NAME + " != '" + recordToSearch +"'") // exclude the record itself
+                    //.withParams(SEARCH_PARAM)
+                    .build();
+            SearchResultsWrapper data = new SearchResultsWrapper(milvusClient.search(searchParam).getData().getResults());
+            LOG.info("Retrieved {} items similar to record {}", data.getRowRecords().size(), recordToSearch);
+            for (int i = 0; i < data.getRowRecords().size(); i++) {
+                QueryResultsWrapper.RowRecord record = data.getRowRecords().get(i);
+                LOG.info("  {} has score {}", record.get(MilvusConstants.RECORD_ID_FIELD_NAME), record.get(MilvusConstants.MILVUS_SCORE_FIELD_NAME));
+            }
         }
 
         releaseCollection(milvusClient, TEST_COLLECTION);

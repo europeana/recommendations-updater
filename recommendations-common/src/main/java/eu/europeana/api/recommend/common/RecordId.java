@@ -15,7 +15,7 @@ import java.util.Objects;
 public class RecordId implements Serializable {
 
     public static final String SET_RECORD_ID_PREFIX = "http://data.europeana.eu/item/";
-    public static final int MAX_SIZE = 100;
+    public static final int MAX_SIZE = 255;
 
     @Serial
     private static final long serialVersionUID = 3143509414537273784L;
