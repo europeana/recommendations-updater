@@ -10,6 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>recommendations-updater</artifactId>
+    <packaging>war</packaging>
 
     <name>Spring-Batch updater</name>
     <description>Spring-Batch program to execute an update</description>

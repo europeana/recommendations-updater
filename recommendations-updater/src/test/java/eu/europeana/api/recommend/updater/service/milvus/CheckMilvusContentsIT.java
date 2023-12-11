@@ -39,9 +39,9 @@ public class CheckMilvusContentsIT {
 
     private static final Logger LOG = LogManager.getLogger(CheckMilvusContentsIT.class);
 
-    private static final String SERVER_URL = "rec-engine-acc.eanadev.org";
+    private static final String SERVER_URL = "localhost";
     private static final int SERVER_PORT = 19530;
-    private static final String TEST_COLLECTION = "test2";
+    private static final String TEST_COLLECTION = "test";
 
 
     private MilvusClient setup() {
@@ -117,8 +117,11 @@ public class CheckMilvusContentsIT {
             FloatArray vectors = results.getData().getFieldsData(1).getVectors().getFloatVector();
             // TODO find out if there's an easier way to get keys and values
             //  Right now all vectors are in one big array, so we need to read them back per 300
+            if (vectors.getDataCount() == 0) {
+                LOG.info("No vectors found to list");
+            }
             int v = 0;
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < Math.min(10, vectors.getDataCount()); i++) {
                 StringBuilder vector = new StringBuilder().append(vectors.getData(v)).append(',');
                 v++;
                 while (v % MilvusConstants.VECTOR_DIMENSION != 0) {
