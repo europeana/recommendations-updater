@@ -1,22 +1,22 @@
 package eu.europeana.api.recommend.updater.service.milvus;
 
 import eu.europeana.api.recommend.common.MilvusConstants;
+import eu.europeana.api.recommend.common.model.RecordVectors;
 import eu.europeana.api.recommend.updater.config.JobCmdLineStarter;
 import eu.europeana.api.recommend.updater.config.UpdaterSettings;
 import eu.europeana.api.recommend.updater.exception.MilvusStateException;
-import eu.europeana.api.recommend.common.model.RecordVectors;
 import eu.europeana.api.recommend.updater.util.AverageTime;
 import io.milvus.client.MilvusClient;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.grpc.GetCollectionStatisticsResponse;
 import io.milvus.param.ConnectParam;
 import io.milvus.param.R;
-import io.milvus.param.collection.FlushParam;
 import io.milvus.param.collection.GetCollectionStatisticsParam;
 import io.milvus.param.dml.InsertParam;
 import io.milvus.param.highlevel.collection.ListCollectionsParam;
 import io.milvus.param.highlevel.collection.response.ListCollectionsResponse;
 import io.milvus.param.partition.CreatePartitionParam;
+import io.milvus.response.GetCollStatResponseWrapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.batch.core.JobExecution;
@@ -103,7 +103,8 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
                         milvusClient.getCollectionStatistics(GetCollectionStatisticsParam.newBuilder()
                                 .withCollectionName(collectionName)
                                 .build()), "Error reading collection statistics");
-                nrEntities = statsResponse.getData().getStatsCount();
+                GetCollStatResponseWrapper stats = new GetCollStatResponseWrapper(statsResponse.getData());
+                nrEntities = stats.getRowCount();
                 LOG.info("Found collection {} containing {} entries", collectionName, nrEntities);
 
                 if (settings.useMilvusPartitions()) {
@@ -149,7 +150,6 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
         List<String> milvusRecordIds = new ArrayList<>();
         List<List<Float>> vectors = new ArrayList<>();
 
-        // TODO check if loading a collection on startup increases performance also for writing -> https://milvus.io/docs/load_collection.md
         // first gather all recordIds and corresponding vectors
         for (List<RecordVectors> list : lists) {
             for (RecordVectors recvec : list) {
@@ -209,11 +209,6 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
             insertBuilder.withPartitionName(setName);
         }
         MilvusUtils.checkResponse(milvusClient.insert(insertBuilder.build()), "Error writing data");
-
-        // Data seems to be written to the Milvus wal file regardless of calling flush or not, but we call it anyway
-        // just to be sure.
-        MilvusUtils.checkResponse(milvusClient.flush(FlushParam.newBuilder().addCollectionName(collectionName).build()),
-                "Error flushing data to Milvus collection " + collectionName);
     }
 
 }
