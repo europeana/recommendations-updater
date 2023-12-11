@@ -48,7 +48,7 @@ public class ProgressLogger {
         if (logAfterSeconds > 0 && d.getSeconds() >= logAfterSeconds) {
             if (totalItems > 0) {
                 double itemsPerMS = itemsDone * 1D / (now - startTime);
-                if (itemsPerMS * MS_PER_SEC > 1.0) {
+                if (itemsPerMS * MS_PER_SEC * SEC_PER_MIN > 960.0) {
                     LOG.info("Retrieved {} items of {} ({} records/sec). Expected time remaining is {}", itemsDone, totalItems,
                             Math.round(itemsPerMS * MS_PER_SEC), getDurationText(Math.round((totalItems - itemsDone) / itemsPerMS)));
                 } else {
