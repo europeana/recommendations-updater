@@ -8,15 +8,12 @@ import eu.europeana.api.recommend.updater.exception.MilvusStateException;
 import eu.europeana.api.recommend.updater.util.AverageTime;
 import io.milvus.client.MilvusClient;
 import io.milvus.client.MilvusServiceClient;
-import io.milvus.grpc.GetCollectionStatisticsResponse;
 import io.milvus.param.ConnectParam;
 import io.milvus.param.R;
-import io.milvus.param.collection.GetCollectionStatisticsParam;
 import io.milvus.param.dml.InsertParam;
 import io.milvus.param.highlevel.collection.ListCollectionsParam;
 import io.milvus.param.highlevel.collection.response.ListCollectionsResponse;
 import io.milvus.param.partition.CreatePartitionParam;
-import io.milvus.response.GetCollStatResponseWrapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.batch.core.JobExecution;
@@ -88,9 +85,9 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
         }
     }
 
-    private void checkMilvusCollectionsState(List<String> collectionNames, boolean deleteOldData) {
+    private void checkMilvusCollectionsState(List<String> availableCollectionNames, boolean deleteOldData) {
         long nrEntities;
-        if (collectionNames.contains(collectionName)) {
+        if (availableCollectionNames.contains(collectionName)) {
             if (deleteOldData) {
                 LOG.info("Deleting old collection {}...", collectionName);
                 MilvusUtils.deleteCollection(milvusClient, collectionName);
@@ -99,12 +96,7 @@ public class MilvusWriterService implements ItemWriter<List<RecordVectors>>, Job
                 MilvusUtils.createCollection(milvusClient, collectionName, collectionDescription, collectionName + INDEX_SUFFIX);
                 nrEntities = 0;
             } else {
-                R<GetCollectionStatisticsResponse> statsResponse = MilvusUtils.checkResponse(
-                        milvusClient.getCollectionStatistics(GetCollectionStatisticsParam.newBuilder()
-                                .withCollectionName(collectionName)
-                                .build()), "Error reading collection statistics");
-                GetCollStatResponseWrapper stats = new GetCollStatResponseWrapper(statsResponse.getData());
-                nrEntities = stats.getRowCount();
+                nrEntities = MilvusUtils.getCount(milvusClient, collectionName);
                 LOG.info("Found collection {} containing {} entries", collectionName, nrEntities);
 
                 if (settings.useMilvusPartitions()) {

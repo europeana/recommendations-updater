@@ -17,7 +17,6 @@ import io.milvus.param.highlevel.collection.response.ListCollectionsResponse;
 import io.milvus.param.highlevel.dml.GetIdsParam;
 import io.milvus.param.highlevel.dml.response.GetResponse;
 import io.milvus.param.index.GetIndexStateParam;
-import io.milvus.param.partition.ShowPartitionsParam;
 import io.milvus.response.QueryResultsWrapper;
 import io.milvus.response.SearchResultsWrapper;
 import org.apache.logging.log4j.LogManager;
@@ -78,19 +77,9 @@ public class CheckMilvusContentsIT {
         MilvusClient milvusClient = setup();
 
         if (testCollectionAvailable(milvusClient)) {
-            LOG.info("Listing partitions for collection {}...", TEST_COLLECTION);
-            R<ShowPartitionsResponse> partitionsResponse = MilvusUtils.checkResponse(milvusClient.showPartitions(ShowPartitionsParam.newBuilder()
-                    .withCollectionName(TEST_COLLECTION)
-                    .build()));
-            int p = 0;
-            for (String partition : partitionsResponse.getData().getPartitionNamesList()) {
-                LOG.info("  {}", partition);
-                p++;
-                if (p == 100) {
-                    LOG.info("Only listing first 100 partitions");
-                    break;
-                }
-            }
+
+            List<String> partitions = MilvusUtils.getPartitions(milvusClient, TEST_COLLECTION);
+            LOG.info("Found partitions: {}", partitions);
 
             R<GetIndexStateResponse> indexResponse = MilvusUtils.checkResponse(milvusClient.getIndexState(GetIndexStateParam.newBuilder()
                     .withCollectionName(TEST_COLLECTION)

@@ -5,14 +5,17 @@ import eu.europeana.api.recommend.common.RecordId;
 import eu.europeana.api.recommend.updater.exception.MilvusStateException;
 import io.milvus.client.MilvusClient;
 import io.milvus.grpc.DataType;
+import io.milvus.grpc.GetCollectionStatisticsResponse;
 import io.milvus.grpc.ShowPartitionsResponse;
 import io.milvus.param.IndexType;
 import io.milvus.param.R;
 import io.milvus.param.collection.CreateCollectionParam;
 import io.milvus.param.collection.DropCollectionParam;
 import io.milvus.param.collection.FieldType;
+import io.milvus.param.collection.GetCollectionStatisticsParam;
 import io.milvus.param.index.CreateIndexParam;
 import io.milvus.param.partition.ShowPartitionsParam;
+import io.milvus.response.GetCollStatResponseWrapper;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -120,20 +123,35 @@ public final class MilvusUtils {
      * @return list of partition names
      */
     public static List<String> getPartitions(MilvusClient milvusClient, String collectionName, Integer maxPartitions) {
-        LOG.info("Listing partitions for collection {}...", collectionName);
+        LOG.debug("Listing partitions for collection {}...", collectionName);
         R<ShowPartitionsResponse> partitionsResponse = MilvusUtils.checkResponse(
                 milvusClient.showPartitions(ShowPartitionsParam.newBuilder()
                         .withCollectionName(collectionName)
                         .build()), "Error listing partitions");
         List<String> result = new ArrayList<>();
         for (String partition : partitionsResponse.getData().getPartitionNamesList()) {
-            LOG.info(partition);
+            LOG.debug(partition);
+            result.add(partition);
             if (maxPartitions != null && result.size() >= maxPartitions) {
-                LOG.info("Only listing first {} partitions", maxPartitions);
+                LOG.debug("Only listing first {} partitions", maxPartitions);
                 break;
             }
         }
         return result;
+    }
+
+    /**
+     * Retrieve the total number of items present in a particular collection
+     * @param milvusClient the client to use
+     * @param collectionName the collection to query
+     * @return total number of stored entries
+     */
+    public static long getCount(MilvusClient milvusClient, String collectionName) {
+        LOG.debug("Retrieving statistics for collection {}...", collectionName);
+        R<GetCollectionStatisticsResponse> statsResponse = MilvusUtils.checkResponse(milvusClient.getCollectionStatistics(GetCollectionStatisticsParam.newBuilder()
+                .withCollectionName(collectionName)
+                .build()));
+        return new GetCollStatResponseWrapper(statsResponse.getData()).getRowCount();
     }
 
     /**
