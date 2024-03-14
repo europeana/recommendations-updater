@@ -94,8 +94,11 @@ public class CheckMilvusContentsIT {
                 LOG.info("  {} = {}", keyValue.getKey(), keyValue.getValue());
             }
 
-            LOG.info("Listing 10 items...");
+            LOG.info("Load collection...");
             loadCollection(milvusClient, TEST_COLLECTION);
+
+            LOG.info("Listing 10 items...");
+            Long start = System.currentTimeMillis();
             R<QueryResults> results = MilvusUtils.checkResponse(milvusClient.query(QueryParam.newBuilder()
                             .withCollectionName(TEST_COLLECTION)
                             .withOutFields(List.of(MilvusConstants.RECORD_ID_FIELD_NAME, MilvusConstants.VECTOR_FIELD_NAME))
@@ -119,6 +122,9 @@ public class CheckMilvusContentsIT {
                 }
                 LOG.info("{} = {}", ids.getData(i), vector.toString());
             }
+            LOG.info("Done listing in {} ms", System.currentTimeMillis() - start);
+
+            LOG.info("Releasing collection...");
             releaseCollection(milvusClient, TEST_COLLECTION);
         } else {
             LOG.warn("Test collection {} is not available", TEST_COLLECTION);
@@ -164,16 +170,18 @@ public class CheckMilvusContentsIT {
     @Test
     public void testGetSimilarRecords() {
         MilvusClient milvusClient = setup();
+        LOG.info("Loading collection...");
         loadCollection(milvusClient, TEST_COLLECTION);
-        String recordToSearch = "08607/243181";
+        String recordToSearch = "2020702/raa_fmi_10000100010001";
 
         // get vector of record to compare
+        Long start = System.currentTimeMillis();
         R<GetResponse> response = MilvusUtils.checkResponse(milvusClient.get(GetIdsParam.newBuilder()
                 .withCollectionName(TEST_COLLECTION)
                 .withPrimaryIds(List.of(recordToSearch))
                 .build()));
         if (response.getData().getRowRecords().isEmpty()) {
-            LOG.error("No vector found for record {}", recordToSearch);
+            LOG.error("No vector found for record {} in {} ms", recordToSearch, System.currentTimeMillis() - start);
         } else {
             QueryResultsWrapper.RowRecord result = response.getData().getRowRecords().get(0);
             List<Float> vectors = (List<Float>) result.get(MilvusConstants.VECTOR_FIELD_NAME);
@@ -182,20 +190,22 @@ public class CheckMilvusContentsIT {
                     .withCollectionName(TEST_COLLECTION)
                     .withMetricType(MilvusConstants.INDEX_METRIC_TYPE) // has to match type in index
                     .withOutFields(List.of(MilvusConstants.RECORD_ID_FIELD_NAME))
-                    .withTopK(3) // max 3 results
+                    .withTopK(10) // max 10 results
                     .withVectors(List.of(vectors))
                     .withVectorFieldName(MilvusConstants.VECTOR_FIELD_NAME)
                     .withExpr(MilvusConstants.RECORD_ID_FIELD_NAME + " != '" + recordToSearch +"'") // exclude the record itself
                     //.withParams(SEARCH_PARAM)
                     .build();
             SearchResultsWrapper data = new SearchResultsWrapper(milvusClient.search(searchParam).getData().getResults());
-            LOG.info("Retrieved {} items similar to record {}", data.getRowRecords().size(), recordToSearch);
-            for (int i = 0; i < data.getRowRecords().size(); i++) {
-                QueryResultsWrapper.RowRecord record = data.getRowRecords().get(i);
+
+            LOG.info("Retrieved {} items similar to record {} in {} ms", data.getRowRecords(0).size(), recordToSearch, System.currentTimeMillis() - start);
+            for (int i = 0; i < data.getRowRecords(0).size(); i++) {
+                QueryResultsWrapper.RowRecord record = data.getRowRecords(0).get(i);
                 LOG.info("  {} has score {}", record.get(MilvusConstants.RECORD_ID_FIELD_NAME), record.get(MilvusConstants.MILVUS_SCORE_FIELD_NAME));
             }
         }
 
+        LOG.info("Releasing collection...");
         releaseCollection(milvusClient, TEST_COLLECTION);
         milvusClient.close();
     }
