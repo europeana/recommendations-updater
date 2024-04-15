@@ -35,8 +35,10 @@ public class UpdaterSettings {
     @Value("${log.debug.timing.interval:200}")
     private Integer logTimingInterval;
 
-    @Value("${embeddings.api.url:}")
-    private String embeddingsApiUrl;
+    @Value("${embedding.api.url:}")
+    private String embeddingApiUrl;
+    @Value("${embedding.api.timeout:60}")
+    private Integer embeddingApiTimeout;
 
     @Value("${milvus.url:}")
     private String milvusUrl;
@@ -67,7 +69,8 @@ public class UpdaterSettings {
         LOG.info("  Batch size = {}", getBatchSize());
         LOG.info("  Threads = {}", getThreads());
         LOG.info("  Log interval = {} seconds", logProgressInterval);
-        LOG.info("  Embeddings API = {}", embeddingsApiUrl);
+        LOG.info("  Embeddings API = {}", embeddingApiUrl);
+        LOG.info("    Timeout = {} sec", embeddingApiTimeout);
         LOG.info("    Reduce = {}", EmbeddingRequestData.REDUCE);
         LOG.info("  Milvus {} at {}", milvusUrl, milvusCollection);
         LOG.info("    Milvus use partitions = {}", useMilvusPartitions);
@@ -114,8 +117,12 @@ public class UpdaterSettings {
         return logTimingInterval;
     }
 
-    public String getEmbeddingsApiUrl() {
-        return embeddingsApiUrl;
+    public String getEmbeddingApiUrl() {
+        return embeddingApiUrl;
+    }
+
+    public Integer getEmbeddingApiTimeout() {
+        return embeddingApiTimeout;
     }
 
     public String getMilvusUrl() {

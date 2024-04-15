@@ -1,13 +1,14 @@
 package eu.europeana.api.recommend.updater.service.embeddings;
 
-import eu.europeana.api.recommend.updater.config.BuildInfo;
-import eu.europeana.api.recommend.updater.config.UpdaterSettings;
-import eu.europeana.api.recommend.updater.exception.EmbeddingsException;
 import eu.europeana.api.recommend.common.model.EmbeddingRecord;
 import eu.europeana.api.recommend.common.model.EmbeddingRequestData;
 import eu.europeana.api.recommend.common.model.EmbeddingResponse;
 import eu.europeana.api.recommend.common.model.RecordVectors;
+import eu.europeana.api.recommend.updater.config.BuildInfo;
+import eu.europeana.api.recommend.updater.config.UpdaterSettings;
+import eu.europeana.api.recommend.updater.exception.EmbeddingsException;
 import eu.europeana.api.recommend.updater.util.AverageTime;
+import io.netty.channel.ChannelOption;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.batch.item.ItemProcessor;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
@@ -48,8 +50,6 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
 
     private static final long MS_PER_SEC = 1000;
 
-    private static final int TIMEOUT = 60; // in seconds (note that Embeddings API will fail when it takes longer than 50 seconds)
-
     private static final int MAX_RESPONSE_SIZE_MB = 10;
     private static final int BYTES_PER_MB = 1024 * 1024;
 
@@ -73,10 +73,10 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
     private void initWebClient() {
         // Check whether to use 1 Embeddings API address or multiple
         // If multiple, we'll keep track of which one was used last so load balancing is improved
-        String[] embeddingsApis = settings.getEmbeddingsApiUrl().split(",");
+        String[] embeddingsApis = settings.getEmbeddingApiUrl().split(",");
         if (embeddingsApis.length == 1) {
-            webClients.add(createWebClient(settings.getEmbeddingsApiUrl()));
-            LOG.info("Using 1 Embeddings API address at {}", settings.getEmbeddingsApiUrl());
+            webClients.add(createWebClient(settings.getEmbeddingApiUrl()));
+            LOG.info("Using 1 Embeddings API address at {}", settings.getEmbeddingApiUrl());
         } else {
             LOG.info("Multiple Embeddings API addresses found");
             for (String embeddingApi : embeddingsApis) {
@@ -94,8 +94,11 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
     private WebClient createWebClient(String url) {
         WebClient.Builder wcBuilder = WebClient.builder()
                 .clientConnector(new ReactorClientHttpConnector(HttpClient.create()
+                        //.wiretap(true)
                         .compress(true)
-                        .responseTimeout(Duration.ofSeconds(TIMEOUT))))
+                        .responseTimeout(Duration.ofSeconds(settings.getEmbeddingApiTimeout()))
+                        .option(ChannelOption.SO_KEEPALIVE, true)
+               ))
                 .exchangeStrategies(ExchangeStrategies.builder()
                         .codecs(configurer -> configurer
                                 .defaultCodecs()
@@ -120,9 +123,13 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
 
     private ExchangeFilterFunction logResponse() {
         return ExchangeFilterFunction.ofResponseProcessor(response -> {
-            LOG.trace("Response: {} {}", response.statusCode().value(), response.statusCode().getReasonPhrase());
+            if (response.statusCode().isError()) {
+                LOG.error("Response: {} {}", response.statusCode().value(), response.statusCode().getReasonPhrase());
+                // TODO figure out how to also log error message field.
+            } else {
+                LOG.trace("Response: {} {}", response.statusCode().value(), response.statusCode().getReasonPhrase());
+            }
             return Mono.just(response);
-
         });
     }
 
@@ -160,11 +167,11 @@ public class EmbedRecordToVectorProcessor implements ItemProcessor<List<Embeddin
                     LOG.trace("3. Generated {} vectors in {} ms", result.size(), duration);
                 }
             } catch (RuntimeException e) {
+                Throwable cause = Exceptions.unwrap(e);
                 String setName = getSetName(embeddingRecords);
                 int sleepTime = RETRY_GET_VECTOR_WAIT_TIME * nrTries;
-                LOG.warn("Request to Embeddings API for set {} failed after {} ms with error {} and cause {}. " +
-                                "Attempt {}, will retry in {} seconds",  setName, System.currentTimeMillis() - start,
-                                e.getMessage(), e.getCause(), nrTries, sleepTime);
+                LOG.warn("Request to Embeddings API for set {} failed after {} ms with cause {}. Attempt {}, will retry in {} seconds",
+                        setName, System.currentTimeMillis() - start, (cause == null ? null : cause.getMessage()), nrTries, sleepTime);
                 if (shuttingDown || nrTries == maxTries) {
                     // rethrow (with set info) so error is propagated
                     throw new EmbeddingsException("Request to Embeddings API failed too often for set " + setName, e);

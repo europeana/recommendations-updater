@@ -157,7 +157,7 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
      */
     @Bean
     public Step step2() {
-        if (UpdaterSettings.isValueDefined(settings.getEmbeddingsApiUrl())
+        if (UpdaterSettings.isValueDefined(settings.getEmbeddingApiUrl())
                 && UpdaterSettings.isValueDefined(settings.getMilvusCollection())
                 && UpdaterSettings.isValueDefined(settings.getMilvusUrl())) {
             LOG.info("Embeddings API and Milvus are configured. Saving vectors to Milvus collection {} ", settings.getMilvusCollection());
@@ -170,7 +170,7 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
                     .throttleLimit(MAX_THREADS)
                     .build();
 
-        } else if (UpdaterSettings.isValueDefined(settings.getEmbeddingsApiUrl())) {
+        } else if (UpdaterSettings.isValueDefined(settings.getEmbeddingApiUrl())) {
             LOG.info("Embeddings API configured but no Milvus, so saving RecordVectors to file {}", settings.getTestFile());
             return stepBuilderFactory.get("step2")
                     .<List<Record>, List<RecordVectors>>chunk(1)
