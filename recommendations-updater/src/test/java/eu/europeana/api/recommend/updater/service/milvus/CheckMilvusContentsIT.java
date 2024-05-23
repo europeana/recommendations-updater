@@ -137,9 +137,10 @@ public class CheckMilvusContentsIT {
                 .build()));
     }
     private void releaseCollection(MilvusClient milvusClient, String collectionName) {
-        MilvusUtils.checkResponse(milvusClient.releaseCollection(ReleaseCollectionParam.newBuilder()
-                .withCollectionName(collectionName)
-                .build()));
+        LOG.warn("Releasing collection disabled because loading it again takes a long time with a full database");
+//        MilvusUtils.checkResponse(milvusClient.releaseCollection(ReleaseCollectionParam.newBuilder()
+//                .withCollectionName(collectionName)
+//                .build()));
     }
 
     /**
@@ -160,6 +161,7 @@ public class CheckMilvusContentsIT {
             LOG.info("id = {} -> vectors = {}", ids.get(i), vectors.get(i));
         }
 
+        LOG.info("Releasing collection...");
         releaseCollection(milvusClient, TEST_COLLECTION);
         milvusClient.close();
     }

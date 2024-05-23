@@ -20,6 +20,7 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
+        <!-- Warning: updating to milvus 2.3.5 comes with a lot of extra 'junk' dependencies like hadoop -->
         <milvus.version>2.3.4</milvus.version>
     </properties>
 

@@ -26,36 +26,36 @@ public class UpdaterSettings {
     private static final int DEFAULT_BATCH_SIZE = 200;
     private static final int DEFAULT_THREADS = 10;
 
-    @Value("${batchSize:}")
+    @Value("${batchSize}")
     private Integer batchSize;
-    @Value("${threads:}")
+    @Value("${threads}")
     private Integer threads;
     @Value("${log.progress.interval:300}")
     private Integer logProgressInterval;
     @Value("${log.debug.timing.interval:200}")
     private Integer logTimingInterval;
 
-    @Value("${embedding.api.url:}")
+    @Value("${embedding.api.url:#{null}}")
     private String embeddingApiUrl;
     @Value("${embedding.api.timeout:60}")
     private Integer embeddingApiTimeout;
 
-    @Value("${milvus.url:}")
+    @Value("${milvus.url:#{null}}")
     private String milvusUrl;
     @Value("${milvus.port}")
     private Integer milvusPort;
-    @Value("${milvus.collection:}")
+    @Value("${milvus.collection:#{null}}")
     private String milvusCollection;
 
-    @Value("${milvus.collectionDescription:}")
+    @Value("${milvus.collectionDescription:#{null}}")
     private String milvusCollectionDescription;
     @Value("${milvus.usePartitions:false}")
     private boolean useMilvusPartitions;
 
-    @Value("${test.file:}")
+    @Value("${test.file:#{null}}")
     private String testFile;
 
-    @Value("${mail.to:}")
+    @Value("${mail.to:#{null}}")
     private String mailTo;
 
     @PostConstruct

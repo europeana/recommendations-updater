@@ -157,11 +157,12 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
      */
     @Bean
     public Step step2() {
+        String step2 = "step2";
         if (UpdaterSettings.isValueDefined(settings.getEmbeddingApiUrl())
                 && UpdaterSettings.isValueDefined(settings.getMilvusCollection())
                 && UpdaterSettings.isValueDefined(settings.getMilvusUrl())) {
             LOG.info("Embeddings API and Milvus are configured. Saving vectors to Milvus collection {} ", settings.getMilvusCollection());
-            return stepBuilderFactory.get("step2")
+            return stepBuilderFactory.get(step2)
                     .<List<Record>, List<RecordVectors>>chunk(1)// chunksize=1 because we want to write to Embeddings API 1 list of <batchsize> records
                     .reader(this.recordReader)
                     .processor(loadRecordGenerateVectorsProcessor())
@@ -172,7 +173,7 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
 
         } else if (UpdaterSettings.isValueDefined(settings.getEmbeddingApiUrl())) {
             LOG.info("Embeddings API configured but no Milvus, so saving RecordVectors to file {}", settings.getTestFile());
-            return stepBuilderFactory.get("step2")
+            return stepBuilderFactory.get(step2)
                     .<List<Record>, List<RecordVectors>>chunk(1)
                     .reader(this.recordReader)
                     .processor(loadRecordGenerateVectorsProcessor())
@@ -183,7 +184,7 @@ public class BatchConfiguration extends DefaultBatchConfigurer {
         }
 
         LOG.info("No Embeddings API and Milvus configured, so saving EmbeddingRecords to file {}", settings.getTestFile());
-        return stepBuilderFactory.get("step2")
+        return stepBuilderFactory.get(step2)
                 .<List<Record>, List<EmbeddingRecord>>chunk(1)
                 .reader(this.recordReader)
                 .processor(recordToEmbedRecordProcessor)
