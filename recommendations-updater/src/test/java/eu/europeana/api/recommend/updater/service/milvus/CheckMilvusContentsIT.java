@@ -5,17 +5,16 @@ import io.milvus.client.MilvusClient;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.grpc.*;
 import io.milvus.param.ConnectParam;
+import io.milvus.param.IndexType;
 import io.milvus.param.R;
-import io.milvus.param.collection.DescribeCollectionParam;
-import io.milvus.param.collection.GetCollectionStatisticsParam;
-import io.milvus.param.collection.LoadCollectionParam;
-import io.milvus.param.collection.ReleaseCollectionParam;
+import io.milvus.param.collection.*;
 import io.milvus.param.dml.QueryParam;
 import io.milvus.param.dml.SearchParam;
 import io.milvus.param.highlevel.collection.ListCollectionsParam;
 import io.milvus.param.highlevel.collection.response.ListCollectionsResponse;
 import io.milvus.param.highlevel.dml.GetIdsParam;
 import io.milvus.param.highlevel.dml.response.GetResponse;
+import io.milvus.param.index.CreateIndexParam;
 import io.milvus.param.index.GetIndexStateParam;
 import io.milvus.response.QueryResultsWrapper;
 import io.milvus.response.SearchResultsWrapper;
@@ -94,8 +93,16 @@ public class CheckMilvusContentsIT {
                 LOG.info("  {} = {}", keyValue.getKey(), keyValue.getValue());
             }
 
-            LOG.info("Load collection...");
-            loadCollection(milvusClient, TEST_COLLECTION);
+            R<GetLoadingProgressResponse> loadingResponse = MilvusUtils.checkResponse(milvusClient.getLoadingProgress(GetLoadingProgressParam.newBuilder()
+                            .withCollectionName(TEST_COLLECTION)
+                                    .build()));
+            LOG.info("Loading progress is {}%, error status = {}", loadingResponse.getData().getProgress(),
+                    loadingResponse.getData().getStatus());
+
+            if (loadingResponse.getData().getProgress() == 0L) {
+                LOG.info("Loading collection...");
+                loadCollection(milvusClient, TEST_COLLECTION);
+            }
 
             LOG.info("Listing 10 items...");
             Long start = System.currentTimeMillis();
@@ -210,6 +217,25 @@ public class CheckMilvusContentsIT {
         LOG.info("Releasing collection...");
         releaseCollection(milvusClient, TEST_COLLECTION);
         milvusClient.close();
+    }
+
+    @Disabled ("Only enable this when you need to create a new index after restoring it")
+    @Test
+    public void createNewindex() {
+        String collectionName = TEST_COLLECTION;
+        String indexName = collectionName + MilvusWriterService.INDEX_SUFFIX;
+        MilvusClient milvusClient = setup();
+
+        LOG.info("Creating index for collection {}...", collectionName);
+        LOG.info(MilvusUtils.checkResponse(milvusClient.createIndex(CreateIndexParam.newBuilder()
+                .withCollectionName(collectionName)
+                .withFieldName(MilvusConstants.VECTOR_FIELD_NAME)
+                .withIndexName(indexName)
+                .withIndexType(IndexType.IVF_SQ8) // copied from original code by Pangeanic
+                .withMetricType(MilvusConstants.INDEX_METRIC_TYPE) // not sure, using L2 for now
+                .withExtraParam("{\"nlist\": 16384}") // copied from original code by Pangeanic
+                //.withSyncMode(Boolean.TRUE) // not sure, not setting for now
+                .build()), "Error creating index" + indexName));
     }
 
 //    @Disabled("Only enable this when creating a new collection manually")
