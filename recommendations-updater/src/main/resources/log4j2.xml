@@ -37,7 +37,7 @@
         <!-- Set to DEBUG to see average timing, set to TRACE to see requests sent to Milvus -->
         <Logger name="eu.europeana.api.recommend.updater.service.milvus.MilvusWriterService" level="INFO"/>
 
-        <!-- Required to see average time logs -->
+        <!-- Requires DEBUG to see average time logs -->
         <Logger name="eu.europeana.api.recommend.updater.util.AverageTime" level="DEBUG"/>
 
     </Loggers>

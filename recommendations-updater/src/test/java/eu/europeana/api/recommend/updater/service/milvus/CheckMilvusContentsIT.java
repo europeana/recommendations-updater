@@ -43,7 +43,7 @@ public class CheckMilvusContentsIT {
 
 
     private MilvusClient setup() {
-        LOG.info("Setting up connection to Milvus at {}...", SERVER_URL);
+        LOG.info("Setting up connection to Milvus at {}:{}...", SERVER_URL, SERVER_PORT);
         ConnectParam connectParam = ConnectParam.newBuilder()
                 .withHost(SERVER_URL)
                 .withPort(SERVER_PORT)
@@ -65,7 +65,7 @@ public class CheckMilvusContentsIT {
                             .withCollectionName(TEST_COLLECTION)
                     .build()));
             DescribeCollectionResponse r = responseDescribe.getData();
-            // TODO no method to retrieve the collection's description!?
+            // TODO is there a method to retrieve the collection's description!?
             LOG.info("Collection {} was created on {}", r.getCollectionName(), new Date(r.getCreatedUtcTimestamp()));
         }
         return result;
@@ -93,16 +93,19 @@ public class CheckMilvusContentsIT {
                 LOG.info("  {} = {}", keyValue.getKey(), keyValue.getValue());
             }
 
-            R<GetLoadingProgressResponse> loadingResponse = MilvusUtils.checkResponse(milvusClient.getLoadingProgress(GetLoadingProgressParam.newBuilder()
-                            .withCollectionName(TEST_COLLECTION)
-                                    .build()));
-            LOG.info("Loading progress is {}%, error status = {}", loadingResponse.getData().getProgress(),
-                    loadingResponse.getData().getStatus());
-
-            if (loadingResponse.getData().getProgress() == 0L) {
-                LOG.info("Loading collection...");
-                loadCollection(milvusClient, TEST_COLLECTION);
+            try {
+                R<GetLoadingProgressResponse> loadingResponse = MilvusUtils.checkResponse(milvusClient.getLoadingProgress(GetLoadingProgressParam.newBuilder()
+                        .withCollectionName(TEST_COLLECTION)
+                        .build()));
+                LOG.info("Loading progress is {}%, error status = {}", loadingResponse.getData().getProgress(),
+                        loadingResponse.getData().getStatus());
+            } catch (RuntimeException e) {
+                // Note that this will be triggered also when the connection is not loaded
+                LOG.error("Error checking if collection is loaded {}", e.getMessage());
             }
+
+            LOG.info("Loading collection...");
+            loadCollection(milvusClient, TEST_COLLECTION);
 
             LOG.info("Listing 10 items...");
             Long start = System.currentTimeMillis();

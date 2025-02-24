@@ -24,7 +24,7 @@ public class UpdaterSettings {
 
     private static final int MAX_BATCH_SIZE = 500;
     private static final int DEFAULT_BATCH_SIZE = 200;
-    private static final int DEFAULT_THREADS = 10;
+    private static final int DEFAULT_THREADS = 4;
 
     @Value("${batchSize}")
     private Integer batchSize;
@@ -77,6 +77,7 @@ public class UpdaterSettings {
         LOG.info("  Test file {}", testFile);
 
         if (isValueDefined(milvusUrl)) {
+            milvusUrl = milvusUrl.trim();
             if (!isValueDefined(milvusCollection)) {
                 throw new ConfigurationException("Property milvus.collection is required when milvus.url is defined");
             }
